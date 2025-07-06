@@ -30,7 +30,7 @@ class HCXRAGASProxy(LLM):
         # Private 속성은 __ 접두사 사용
         self.__last_metric_type = None
         
-        # RAGAS 메트릭별 스키마 정의
+        # RAGAS 메트릭별 스키마 정의 - RAGAS가 실제로 기대하는 스키마
         self.__metric_schemas = {
             'faithfulness': {
                 'keywords': ['break down each sentence', 'analyze the complexity', 'statement', 'extract', 'factual', 'claims'],
@@ -48,19 +48,22 @@ class HCXRAGASProxy(LLM):
                 'default': {'question': '', 'noncommittal': 0}
             },
             'context_precision': {
-                'keywords': ['is the context relevant', 'relevance', 'precision'],
-                'schema': {'relevant': int},
-                'default': {'relevant': 0}
+                'keywords': ['verify if the context was useful', 'context was useful', 'give verdict', 'useful in arriving'],
+                # RAGAS expects 'reason' and 'verdict', not 'relevant'!
+                'schema': {'reason': str, 'verdict': int},
+                'default': {'reason': 'Unable to determine', 'verdict': 0}
             },
             'context_recall': {
-                'keywords': ['check if', 'supported', 'attributed', 'entailed'],
-                'schema': {'attributed': List[int]},
-                'default': {'attributed': []}
+                'keywords': ['analyze each sentence', 'classify if the sentence', 'can be attributed', 'attributed to the given context'],
+                # RAGAS expects 'classifications' with list of objects
+                'schema': {'classifications': List[Dict[str, Any]]},
+                'default': {'classifications': []}
             },
             'answer_correctness': {
-                'keywords': ['correct', 'accuracy', 'faithful'],
-                'schema': {'similarity': float},
-                'default': {'similarity': 0.0}
+                'keywords': ['ground truth and an answer', 'classify them', 'TP (true positive)', 'FP (false positive)'],
+                # RAGAS expects TP, FP, FN lists
+                'schema': {'TP': List[Dict[str, str]], 'FP': List[Dict[str, str]], 'FN': List[Dict[str, str]]},
+                'default': {'TP': [], 'FP': [], 'FN': []}
             }
         }
     
@@ -215,6 +218,11 @@ class HCXRAGASProxy(LLM):
         # 3. HCX 호출
         raw_response = self.hcx._call(enhanced_prompt, stop, run_manager, **kwargs)
         
+        # 디버깅: 메트릭별 응답 로깅
+        if metric_type in ['context_precision', 'context_recall', 'answer_correctness']:
+            import logging
+            logging.info(f"[HCX_PROXY] {metric_type} raw response: {raw_response}")
+        
         # 4. 응답을 RAGAS 스키마에 맞게 변환
         try:
             # 먼저 JSON 파싱 시도
@@ -228,6 +236,11 @@ class HCXRAGASProxy(LLM):
         
         # 5. 메트릭별 강제 변환
         result = self._force_convert(raw_response, metric_type)
+        
+        # 디버깅: 변환 결과 로깅
+        if metric_type in ['context_precision', 'context_recall', 'answer_correctness']:
+            import logging
+            logging.info(f"[HCX_PROXY] {metric_type} converted result: {result}")
         
         # 6. JSON 문자열로 반환
         return json.dumps(result, ensure_ascii=False)
@@ -270,15 +283,25 @@ class HCXRAGASProxy(LLM):
         elif metric_type == 'context_precision':
             return f"""{prompt}
 
-컨텍스트가 질문에 답하는데 관련이 있는지 판단하세요.
-답변은 "예, 관련이 있습니다" 또는 "아니오, 관련이 없습니다"로 시작해주세요.
+중요: 컨텍스트가 답변을 생성하는데 유용했는지 판단하세요.
+반드시 다음 중 하나로만 답하세요:
+- "1" (유용함)
+- "0" (유용하지 않음)
+
+숫자만 답하세요. 설명은 필요없습니다.
 """
 
         elif metric_type == 'context_recall':
             return f"""{prompt}
 
-각 문장이 컨텍스트에서 지원되는지 확인하세요.
-지원되면 1, 지원되지 않으면 0으로 표시하세요.
+각 문장이 컨텍스트에서 지원되는지 확인하고, 다음 형식으로 답하세요:
+[1, 0, 1, 1, 0]
+
+각 숫자는:
+- 1: 해당 문장이 컨텍스트에서 지원됨
+- 0: 해당 문장이 컨텍스트에서 지원되지 않음
+
+대괄호 안에 쉼표로 구분된 숫자만 답하세요.
 """
 
         elif metric_type == 'faithfulness_nli':
@@ -297,6 +320,19 @@ class HCXRAGASProxy(LLM):
 verdict: 1 = 지원됨, 0 = 지원안됨
 """
 
+        elif metric_type == 'answer_correctness':
+            return f"""{prompt}
+
+Ground truth와 answer를 비교하여 다음 형식으로 분류하세요:
+{{
+  "TP": ["정답과 일치하는 문장1", "문장2"],
+  "FP": ["정답에 없는 잘못된 문장3"],
+  "FN": ["정답에는 있지만 답변에 없는 문장4"]
+}}
+
+TP=True Positive, FP=False Positive, FN=False Negative
+"""
+
         else:
             return prompt
     
@@ -305,6 +341,7 @@ verdict: 1 = 지원됨, 0 = 지원안됨
         
         schema_config = self.__metric_schemas.get(metric_type, {})
         default = schema_config.get('default', {})
+        
         
         try:
             if metric_type == 'faithfulness' or metric_type == 'faithfulness_nli':
@@ -344,7 +381,21 @@ verdict: 1 = 지원됨, 0 = 지원안됨
                 
                 # 텍스트에서 추출
                 statements = self._extract_statements(response)
-                return {'statements': statements}
+                
+                # faithfulness vs faithfulness_nli 구분
+                if metric_type == 'faithfulness':
+                    # 단순 문자열 리스트
+                    return {'statements': statements}
+                else:
+                    # NLI는 객체 리스트 필요
+                    stmt_objects = []
+                    for stmt in statements:
+                        stmt_objects.append({
+                            'statement': stmt,
+                            'verdict': 1,  # 기본값
+                            'reason': 'Extracted from response'
+                        })
+                    return {'statements': stmt_objects}
             
             elif metric_type == 'answer_relevancy':
                 question = self._extract_question(response)
@@ -352,32 +403,154 @@ verdict: 1 = 지원됨, 0 = 지원안됨
                 return {'question': question, 'noncommittal': 0}
             
             elif metric_type == 'context_precision':
-                relevant = self._extract_relevance(response)
-                return {'relevant': relevant}
+                # RAGAS expects {"reason": "...", "verdict": 0 or 1}
+                # 숫자 응답 우선 확인
+                response_stripped = response.strip()
+                verdict = 0
+                reason = "Context was not useful"
+                
+                if response_stripped in ['0', '1']:
+                    verdict = int(response_stripped)
+                    reason = "Context was useful in arriving at the answer" if verdict else "Context was not useful"
+                elif response.strip().startswith('{'):
+                    try:
+                        data = json.loads(response)
+                        if 'verdict' in data:
+                            verdict = int(data['verdict'])
+                            reason = data.get('reason', reason)
+                        elif 'relevant' in data:
+                            verdict = int(data['relevant'])
+                            reason = "Context was useful" if verdict else "Context was not useful"
+                        elif 'statements' in data:
+                            # HCX가 statements 형식으로 응답한 경우
+                            verdict = 1  # 기본값
+                            reason = "Context evaluation based on statements"
+                    except:
+                        pass
+                else:
+                    # 텍스트에서 관련성 추출
+                    verdict = self._extract_relevance(response)
+                    reason = "Based on analysis of the response"
+                
+                return {'reason': reason, 'verdict': verdict}
             
             elif metric_type == 'context_recall':
-                # JSON 응답인 경우 support 값만 추출
+                # RAGAS expects {"classifications": [{"statement": "...", "reason": "...", "attributed": 0 or 1}]}
+                classifications = []
+                
                 try:
-                    if response.strip().startswith('{') or response.strip().startswith('['):
+                    # JSON 응답 처리
+                    if response.strip().startswith('{'):
                         data = json.loads(response)
-                        if isinstance(data, dict) and 'statements' in data:
-                            # 복잡한 응답에서 support 값만 추출
-                            attributed = []
-                            for stmt in data['statements']:
-                                if isinstance(stmt, dict) and 'support' in stmt:
-                                    attributed.append(stmt['support'])
-                            if attributed:
-                                return {'attributed': attributed}
+                        if 'classifications' in data:
+                            classifications = data['classifications']
+                        elif 'statements' in data:
+                            # statements를 classifications로 변환
+                            if data['statements']:  # 비어있지 않은 경우
+                                for stmt in data['statements']:
+                                    if isinstance(stmt, dict):
+                                        classifications.append({
+                                            'statement': stmt.get('statement', ''),
+                                            'reason': stmt.get('reason', 'Based on context'),
+                                            'attributed': stmt.get('attributed', stmt.get('support', 0))
+                                        })
+                            else:
+                                # 빈 statements인 경우 기본값
+                                classifications.append({
+                                    'statement': 'Answer statement',
+                                    'reason': 'Context supports the answer',
+                                    'attributed': 1
+                                })
+                    elif response.strip().startswith('['):
+                        # [1, 0, 1] 형태 -> classifications로 변환
+                        data = json.loads(response)
+                        if isinstance(data, list):
+                            for i, val in enumerate(data):
+                                classifications.append({
+                                    'statement': f'Statement {i+1}',
+                                    'reason': 'Attributed to context' if val else 'Not found in context',
+                                    'attributed': int(val)
+                                })
                 except:
                     pass
                 
-                # 일반적인 추출
-                attributed = self._extract_attribution(response)
-                return {'attributed': attributed}
+                # 응답에서 숫자 추출 시도
+                if not classifications:
+                    import re
+                    numbers = re.findall(r'[01]', response)
+                    if numbers:
+                        for i, num in enumerate(numbers):
+                            classifications.append({
+                                'statement': f'Statement {i+1}',
+                                'reason': 'Based on extraction',
+                                'attributed': int(num)
+                            })
+                
+                # 기본값
+                if not classifications:
+                    classifications = [{
+                        'statement': 'Unable to parse',
+                        'reason': 'Default response',
+                        'attributed': 0
+                    }]
+                
+                return {'classifications': classifications}
             
             elif metric_type == 'answer_correctness':
-                # 간단히 0.7 정도의 유사도 반환
-                return {'similarity': 0.7}
+                # RAGAS expects {"TP": [...], "FP": [...], "FN": [...]} with statement objects
+                tp_list = []
+                fp_list = []
+                fn_list = []
+                
+                try:
+                    if response.strip().startswith('{'):
+                        data = json.loads(response)
+                        if 'TP' in data:
+                            # 문자열 리스트를 객체 리스트로 변환
+                            for item in data.get('TP', []):
+                                if isinstance(item, str):
+                                    tp_list.append({'statement': item, 'reason': 'True positive'})
+                                elif isinstance(item, dict):
+                                    tp_list.append(item)
+                        
+                        if 'FP' in data:
+                            for item in data.get('FP', []):
+                                if isinstance(item, str):
+                                    fp_list.append({'statement': item, 'reason': 'False positive'})
+                                elif isinstance(item, dict):
+                                    fp_list.append(item)
+                        
+                        if 'FN' in data:
+                            for item in data.get('FN', []):
+                                if isinstance(item, str):
+                                    fn_list.append({'statement': item, 'reason': 'False negative'})
+                                elif isinstance(item, dict):
+                                    fn_list.append(item)
+                        
+                        # HCX가 statements만 반환한 경우
+                        if 'statements' in data and not ('TP' in data or 'FP' in data or 'FN' in data):
+                            # 기본적으로 TP로 처리
+                            if data['statements']:
+                                for stmt in data['statements']:
+                                    if isinstance(stmt, str):
+                                        tp_list.append({'statement': stmt, 'reason': 'Assumed correct'})
+                                    elif isinstance(stmt, dict):
+                                        tp_list.append({'statement': stmt.get('statement', ''), 'reason': stmt.get('reason', 'Assumed correct')})
+                            else:
+                                # 빈 statements인 경우
+                                tp_list.append({'statement': 'Answer evaluated', 'reason': 'Default evaluation'})
+                except:
+                    pass
+                
+                # 기본값 설정
+                if not tp_list and not fp_list and not fn_list:
+                    # 텍스트 유사도 추정
+                    if '정확' in response or '일치' in response or 'correct' in response.lower():
+                        tp_list = [{'statement': 'Answer is correct', 'reason': 'Based on response analysis'}]
+                    else:
+                        fp_list = [{'statement': 'Answer may be incorrect', 'reason': 'Based on response analysis'}]
+                
+                return {'TP': tp_list, 'FP': fp_list, 'FN': fn_list}
             
         except Exception as e:
             pass

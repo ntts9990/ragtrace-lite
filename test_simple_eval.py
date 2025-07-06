@@ -5,6 +5,10 @@
 import os
 import sys
 import pandas as pd
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
@@ -105,8 +109,5 @@ def test_simple_evaluation():
 
 
 if __name__ == "__main__":
-    # API 키 설정
-    os.environ['CLOVA_STUDIO_API_KEY'] = "nv-d78e840d8f5c4e2faed883a52ea91375gmj8"
-    
     # 테스트 실행
     test_simple_evaluation()

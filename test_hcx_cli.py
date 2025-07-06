@@ -4,6 +4,11 @@
 """
 import sys
 import os
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 # CLI의 test_hcx 함수 직접 호출
