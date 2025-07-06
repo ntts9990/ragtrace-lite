@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.6] - 2025-01-07
+
+### Fixed
+- Enhanced None value handling in report_generator.py with explicit float conversions
+- Fixed format string errors when statistics contain None or NaN values
+- Added pandas notna() checks for DataFrame values in performance analysis
+- Improved robustness of metric score formatting throughout report generation
+
 ## [1.0.5] - 2025-01-07
 
 ### Fixed

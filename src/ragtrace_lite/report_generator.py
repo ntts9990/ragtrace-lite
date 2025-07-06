@@ -102,6 +102,7 @@ class ReportGenerator:
         
         # RAGAS 전체 점수
         if ragas_score is not None:
+            ragas_score = float(ragas_score)  # 명시적 float 변환
             score_bar = self._create_score_bar(ragas_score)
             section.extend([
                 f"### 🎯 전체 RAGAS 점수",
@@ -122,10 +123,10 @@ class ReportGenerator:
             ])
             
             for metric_name, stats in metric_stats.items():
-                avg_score = stats.get('average', 0) or 0
-                min_score = stats.get('minimum', 0) or 0
-                max_score = stats.get('maximum', 0) or 0
-                count = stats.get('count', 0) or 0
+                avg_score = float(stats.get('average', 0) or 0)
+                min_score = float(stats.get('minimum', 0) or 0)
+                max_score = float(stats.get('maximum', 0) or 0)
+                count = int(stats.get('count', 0) or 0)
                 
                 score_viz = self._create_score_bar(avg_score, length=15)
                 
@@ -154,10 +155,11 @@ class ReportGenerator:
         
         for metric_name, stats in metric_stats.items():
             description = metric_descriptions.get(metric_name, f'**{metric_name}** - 평가 메트릭')
-            avg_score = stats.get('average', 0) or 0  # None 값 처리
-            min_score = stats.get('minimum', 0) or 0
-            max_score = stats.get('maximum', 0) or 0
-            count = stats.get('count', 0) or 0
+            # 더 강력한 None 처리 - float 변환 추가
+            avg_score = float(stats.get('average', 0) or 0)  # None 값 처리
+            min_score = float(stats.get('minimum', 0) or 0)
+            max_score = float(stats.get('maximum', 0) or 0)
+            count = int(stats.get('count', 0) or 0)
             
             section.extend([
                 f"### {metric_name}",
@@ -221,8 +223,9 @@ class ReportGenerator:
                 for i, (idx, row) in enumerate(top_3.iterrows(), 1):
                     question = dataset[idx]['question'] if idx < len(dataset) else "Unknown"
                     question_short = (question[:50] + "...") if len(question) > 50 else question
+                    overall_score = float(row['overall_score']) if pd.notna(row['overall_score']) else 0.0
                     section.extend([
-                        f"{i}. **점수: {row['overall_score']:.4f}**",
+                        f"{i}. **점수: {overall_score:.4f}**",
                         f"   - 질문: {question_short}",
                         ""
                     ])
@@ -237,8 +240,9 @@ class ReportGenerator:
                 for i, (idx, row) in enumerate(bottom_3.iterrows(), 1):
                     question = dataset[idx]['question'] if idx < len(dataset) else "Unknown"
                     question_short = (question[:50] + "...") if len(question) > 50 else question
+                    overall_score = float(row['overall_score']) if pd.notna(row['overall_score']) else 0.0
                     section.extend([
-                        f"{i}. **점수: {row['overall_score']:.4f}**",
+                        f"{i}. **점수: {overall_score:.4f}**",
                         f"   - 질문: {question_short}",
                         ""
                     ])
