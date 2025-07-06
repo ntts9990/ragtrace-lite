@@ -112,3 +112,6 @@ build/
 # Offline deployment files
 python-installer/
 offline-deployment/
+
+# Project-specific documentation
+CLAUDE.md
