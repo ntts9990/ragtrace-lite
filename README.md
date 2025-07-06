@@ -1,16 +1,13 @@
 [![PyPI version](https://badge.fury.io/py/ragtrace-lite.svg)](https://badge.fury.io/py/ragtrace-lite)
 [![Python Support](https://img.shields.io/pypi/pyversions/ragtrace-lite.svg)](https://pypi.org/project/ragtrace-lite/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Documentation Status](https://readthedocs.org/projects/ragtrace-lite/badge/?version=latest)](https://ragtrace-lite.readthedocs.io/en/latest/?badge=latest)
 
 # RAGTrace Lite
 
 경량화된 RAG (Retrieval-Augmented Generation) 평가 프레임워크
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-APACHE)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
 ## 개요
 
@@ -204,10 +201,10 @@ ragtrace-lite/
 ## 감사의 글
 
 이 프로젝트는 다음 프로젝트들에 기반하고 있습니다:
-- [RAGTrace](https://github.com/yourusername/RAGTrace) - 원본 프로젝트
+- [RAGTrace](https://github.com/ntts9990/RAGTrace) - 원본 프로젝트
 - [RAGAS](https://github.com/explodinggradients/ragas) - RAG 평가 프레임워크
 
 ## 저작권
 
-Original work Copyright 2024 RAGTrace Contributors  
+Original work Copyright 2025 RAGTrace Contributors  
 Modified work Copyright 2025 RAGTrace Lite Contributors
