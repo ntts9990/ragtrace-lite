@@ -244,7 +244,7 @@ RAGTrace Lite에 기여해주셔서 감사합니다! 이 문서는 프로젝트�
 
 질문이나 도움이 필요하면:
 
-ntts9990@gmail.com 이메일
+ntts9990@gmail.com
 
 ## 라이선스
 
