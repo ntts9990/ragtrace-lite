@@ -131,8 +131,6 @@ scripts/run_evaluation.bat
 
 This project is provided under **Apache License 2.0**:
 
-- **Apache License 2.0**: [LICENSE-APACHE](LICENSE-APACHE)
-
 See the [LICENSE](LICENSE) file for details.
 
 ## Usage
