@@ -18,6 +18,16 @@ tenacity>=8.0.0
 # Environment variables
 python-dotenv>=1.0.0
 
-# Optional (BGE-M3 local embedding)
-# sentence-transformers>=2.2.2
-# torch>=2.0.0
+# LLM & Embedding dependencies (for full functionality)
+langchain>=0.0.300
+langchain-community>=0.0.10
+langchain-huggingface>=0.0.1
+sentence-transformers>=2.2.2
+torch>=2.0.0
+huggingface-hub>=0.17.0
+jinja2>=3.1.6
+numpy>=1.24.0
+
+# Optional (for enhanced features)
+# plotly>=5.17.0
+# scipy>=1.10.0

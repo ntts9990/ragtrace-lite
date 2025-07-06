@@ -18,6 +18,47 @@ RAGTrace Lite는 RAG 시스템의 성능을 평가하기 위한 경량화된 프
 [RAGAS](https://github.com/explodinggradients/ragas) 프레임워크를 기반으로 하며, 
 한국어 환경에 최적화되어 있습니다.
 
+## 🚀 빠른 시작
+
+### 1. 저장소 클론 및 설치
+```bash
+git clone https://github.com/ntts9990/ragtrace-lite.git
+cd ragtrace-lite
+
+# uv 사용 (권장)
+uv sync
+
+# 또는 pip 사용
+pip install -e .[all]
+```
+
+### 2. API 키 설정
+`.env` 파일을 생성하고 API 키를 입력:
+```env
+CLOVA_STUDIO_API_KEY=nv-your-hcx-api-key
+GOOGLE_API_KEY=your-gemini-api-key
+```
+
+### 3. 샘플 평가 실행
+```bash
+# BGE-M3 + HCX로 평가 실행
+uv run python -m ragtrace_lite.cli evaluate data/sample_data.json --llm hcx
+
+# 웹 대시보드 생성
+uv run python -m ragtrace_lite.cli dashboard --open
+```
+
+## 💻 플랫폼 지원
+
+- ✅ **Windows** 10+ (PowerShell/CMD)
+- ✅ **macOS** 10.15+ (Intel/Apple Silicon)  
+- ✅ **Linux** Ubuntu 18.04+
+- ✅ **Python** 3.9, 3.10, 3.11, 3.12
+
+**GPU 지원**: CUDA (Linux), MPS (Apple Silicon), CPU (모든 플랫폼)
+
+> 📖 **상세 설치 가이드**: [SETUP.md](SETUP.md) 참조
+
 ## 주요 특징
 
 - 🚀 **빠른 설치 및 실행**: 최소 의존성으로 빠르게 시작

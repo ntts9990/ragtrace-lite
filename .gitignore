@@ -83,3 +83,20 @@ desktop.ini
 
 # UV files
 .uv_cache/
+
+# RAGTrace Lite specific files
+# 모델 파일 (용량이 크므로 제외, 자동 다운로드됨)
+models/
+!models/.gitkeep
+
+# 평가 결과 및 보고서 (사용자별로 다름)
+reports/
+!reports/.gitkeep
+
+# 사용자 데이터 (민감한 정보 포함 가능)
+data/evaluation_data.json
+data/user_data.json
+
+# 설정 파일
+config.yaml
+config.yml

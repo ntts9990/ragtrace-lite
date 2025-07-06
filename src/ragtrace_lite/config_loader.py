@@ -22,7 +22,7 @@ import os
 import yaml
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -32,7 +32,8 @@ class LLMConfig(BaseModel):
     api_key: Optional[str] = Field(None, description="API 키")
     model_name: Optional[str] = Field(None, description="모델 이름")
     
-    @validator('provider')
+    @field_validator('provider')
+    @classmethod
     def validate_provider(cls, v):
         allowed = ['gemini', 'hcx']
         if v.lower() not in allowed:
@@ -45,7 +46,8 @@ class EmbeddingConfig(BaseModel):
     provider: str = Field("default", description="임베딩 제공자 (default, bge_m3)")
     device: str = Field("auto", description="디바이스 (auto, cpu, cuda, mps)")
     
-    @validator('provider')
+    @field_validator('provider')
+    @classmethod
     def validate_provider(cls, v):
         allowed = ['default', 'bge_m3']
         if v.lower() not in allowed:
@@ -71,7 +73,7 @@ class ResultsConfig(BaseModel):
 
 class EvaluationConfig(BaseModel):
     """평가 설정"""
-    batch_size: int = Field(10, description="배치 크기")
+    batch_size: int = Field(1, description="배치 크기")
     show_progress: bool = Field(True, description="진행률 표시")
     raise_exceptions: bool = Field(False, description="예외 발생 시 중단")
     metrics: List[str] = Field(
@@ -79,13 +81,15 @@ class EvaluationConfig(BaseModel):
         description="평가 메트릭"
     )
     
-    @validator('batch_size')
+    @field_validator('batch_size')
+    @classmethod
     def validate_batch_size(cls, v):
         if v < 1 or v > 100:
             raise ValueError("배치 크기는 1-100 사이여야 합니다")
         return v
     
-    @validator('metrics')
+    @field_validator('metrics')
+    @classmethod
     def validate_metrics(cls, v):
         allowed = ['faithfulness', 'answer_relevancy', 'context_precision', 'context_recall', 'answer_correctness']
         for metric in v:
@@ -103,10 +107,12 @@ class Config(BaseSettings):
     results: ResultsConfig = ResultsConfig()
     evaluation: EvaluationConfig = EvaluationConfig()
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"  # Allow extra fields from .env
+    )
 
 
 def load_config(config_path: Optional[str] = None) -> Config:
@@ -123,6 +129,9 @@ def load_config(config_path: Optional[str] = None) -> Config:
         FileNotFoundError: 설정 파일이 없는 경우
         ValueError: 설정 값이 잘못된 경우
     """
+    # 명시적으로 .env 파일 로드
+    from dotenv import load_dotenv
+    load_dotenv()
     if config_path is None:
         config_path = "config.yaml"
     
@@ -145,11 +154,17 @@ def load_config(config_path: Optional[str] = None) -> Config:
             api_key = ''
             model_name = 'default'
         
+        # 임베딩 설정도 환경변수에서 로드
+        embedding_provider = os.getenv('DEFAULT_EMBEDDING', 'default').lower()
+        
         return Config(
             llm=LLMConfig(
                 provider=provider,
                 api_key=api_key,
                 model_name=model_name
+            ),
+            embedding=EmbeddingConfig(
+                provider=embedding_provider
             ),
             evaluation=EvaluationConfig(),
             database=DatabaseConfig()

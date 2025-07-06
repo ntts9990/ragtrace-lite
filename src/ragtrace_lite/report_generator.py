@@ -122,10 +122,10 @@ class ReportGenerator:
             ])
             
             for metric_name, stats in metric_stats.items():
-                avg_score = stats.get('average', 0)
-                min_score = stats.get('minimum', 0)
-                max_score = stats.get('maximum', 0)
-                count = stats.get('count', 0)
+                avg_score = stats.get('average', 0) or 0
+                min_score = stats.get('minimum', 0) or 0
+                max_score = stats.get('maximum', 0) or 0
+                count = stats.get('count', 0) or 0
                 
                 score_viz = self._create_score_bar(avg_score, length=15)
                 
@@ -162,7 +162,7 @@ class ReportGenerator:
                 description,
                 f"",
                 f"- **평균 점수**: {avg_score:.4f}",
-                f"- **점수 범위**: {stats.get('minimum', 0):.4f} ~ {stats.get('maximum', 0):.4f}",
+                f"- **점수 범위**: {(stats.get('minimum', 0) or 0):.4f} ~ {(stats.get('maximum', 0) or 0):.4f}",
                 f"- **평가 완료**: {stats.get('count', 0)}개 항목",
                 ""
             ])

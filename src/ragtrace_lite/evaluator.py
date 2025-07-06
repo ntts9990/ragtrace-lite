@@ -12,6 +12,7 @@ import pandas as pd
 from typing import Dict, List, Any, Optional
 from datasets import Dataset
 from tqdm import tqdm
+from pathlib import Path
 
 # RAGAS imports with fallback
 try:
@@ -69,22 +70,149 @@ class RagasEvaluator:
             print(f"🤖 새 LLM 생성: {config.llm.provider}")
             self.llm = create_llm(config)
         
-        # 임베딩 모델 설정 (HuggingFace 무료 모델 사용)
-        try:
-            from langchain_community.embeddings import HuggingFaceEmbeddings
-            self.embeddings = HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-MiniLM-L6-v2"
-            )
-            print("✅ HuggingFace 임베딩 모델 로드 완료")
-        except ImportError:
-            print("⚠️  HuggingFace 임베딩 사용 불가, 기본 임베딩 사용")
-            self.embeddings = None
+        # 임베딩 모델 설정
+        self.embeddings = self._setup_embeddings()
+        if self.embeddings:
+            print("✅ 임베딩 모델 설정 완료")
+        else:
+            print("⚠️  임베딩 설정 실패, RAGAS 기본값 사용")
         
         # 평가 메트릭 설정
         self.metrics = self._setup_metrics()
         
         print(f"✅ 평가자 초기화 완료: {len(self.metrics)}개 메트릭")
     
+    def _setup_embeddings(self):
+        """임베딩 모델을 설정합니다."""
+        embedding_provider = self.config.embedding.provider.lower()
+        
+        print(f"🔧 임베딩 설정: {embedding_provider}")
+        
+        if embedding_provider == "bge_m3":
+            print("📁 BGE-M3 임베딩 초기화")
+            try:
+                return self._setup_bge_m3_embeddings()
+            except Exception as e:
+                print(f"⚠️  BGE-M3 임베딩 초기화 실패: {e}")
+                return None
+            
+        elif embedding_provider == "default":
+            # OpenAI 임베딩 사용 (RAGAS 기본값)
+            try:
+                from langchain_openai.embeddings import OpenAIEmbeddings
+                import os
+                
+                api_key = os.getenv('OPENAI_API_KEY')
+                if not api_key or api_key == "your_openai_api_key_here":
+                    print("⚠️  OpenAI API 키가 설정되지 않았습니다")
+                    return None
+                    
+                embeddings = OpenAIEmbeddings(
+                    model="text-embedding-ada-002",
+                    openai_api_key=api_key
+                )
+                print("✅ OpenAI 임베딩 (text-embedding-ada-002) 로드 완료")
+                return embeddings
+                
+            except ImportError as e:
+                print(f"⚠️  OpenAI 임베딩 import 실패: {e}")
+                return None
+            except Exception as e:
+                print(f"⚠️  OpenAI 임베딩 초기화 실패: {e}")
+                return None
+                
+        else:
+            print(f"⚠️  지원하지 않는 임베딩 제공자: {embedding_provider}")
+            return None
+
+    def _setup_bge_m3_embeddings(self):
+        """BGE-M3 임베딩 모델을 설정합니다."""
+        import os
+        
+        # 모델 경로 설정
+        model_path = Path(os.getenv('BGE_M3_MODEL_PATH', './models/bge-m3'))
+        
+        # 모델 폴더 생성
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # 모델이 로컬에 있는지 확인
+        if not model_path.exists() or not any(model_path.iterdir()):
+            print(f"📥 BGE-M3 모델을 다운로드합니다: {model_path}")
+            self._download_bge_m3_model(model_path)
+        else:
+            print(f"✅ BGE-M3 모델 발견: {model_path}")
+        
+        # 임베딩 모델 로드
+        try:
+            from sentence_transformers import SentenceTransformer
+            
+            device = os.getenv('BGE_M3_DEVICE', 'auto')
+            if device == 'auto':
+                import torch
+                if torch.cuda.is_available():
+                    device = 'cuda'
+                elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+                    device = 'mps'
+                else:
+                    device = 'cpu'
+            
+            print(f"🔧 BGE-M3 모델 로딩 (device: {device})...")
+            model = SentenceTransformer(str(model_path), device=device)
+            
+            # RAGAS 호환 임베딩 래퍼 생성
+            from ragas.embeddings import LangchainEmbeddingsWrapper
+            
+            try:
+                # 새로운 langchain_huggingface 사용 (권장)
+                from langchain_huggingface import HuggingFaceEmbeddings
+            except ImportError:
+                # 대체: langchain_community 사용
+                from langchain_community.embeddings import HuggingFaceEmbeddings
+            
+            # HuggingFace 임베딩을 langchain으로 감싸기
+            lc_embeddings = HuggingFaceEmbeddings(
+                model_name=str(model_path),
+                model_kwargs={'device': device}
+            )
+            embeddings = LangchainEmbeddingsWrapper(lc_embeddings)
+            
+            print(f"✅ BGE-M3 임베딩 로드 완료 (device: {device})")
+            return embeddings
+            
+        except ImportError as e:
+            raise ImportError(f"BGE-M3 의존성이 설치되지 않았습니다: {e}")
+        except Exception as e:
+            raise Exception(f"BGE-M3 모델 로드 실패: {e}")
+    
+    def _download_bge_m3_model(self, model_path: Path):
+        """BGE-M3 모델을 Hugging Face에서 다운로드합니다."""
+        try:
+            from huggingface_hub import snapshot_download
+            
+            print(f"📦 BGE-M3 모델 다운로드 시작...")
+            print(f"   위치: {model_path.absolute()}")
+            print(f"   크기: 약 2.3GB (시간이 걸릴 수 있습니다)")
+            
+            # 디렉토리 생성 (크로스 플랫폼 호환)
+            model_path.mkdir(parents=True, exist_ok=True)
+            
+            # BGE-M3 모델 다운로드 (크로스 플랫폼 경로 처리)
+            snapshot_download(
+                repo_id="BAAI/bge-m3",
+                local_dir=str(model_path.absolute()),
+                local_dir_use_symlinks=False,  # 심볼릭 링크 대신 실제 파일 복사
+                resume_download=True  # 중단된 다운로드 재개 지원
+            )
+            
+            print(f"✅ BGE-M3 모델 다운로드 완료: {model_path.absolute()}")
+            
+        except ImportError as e:
+            print("❌ huggingface_hub가 설치되지 않았습니다")
+            print("💡 해결방법: pip install huggingface_hub")
+            raise ImportError(f"huggingface_hub가 설치되지 않았습니다: {e}")
+        except Exception as e:
+            raise Exception(f"BGE-M3 모델 다운로드 실패: {e}")
+
     def _setup_metrics(self) -> List[Any]:
         """평가 메트릭을 설정합니다."""
         metrics = []

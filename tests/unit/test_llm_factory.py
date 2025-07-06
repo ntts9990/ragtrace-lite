@@ -5,7 +5,7 @@ Unit tests for llm_factory module
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 
-from ragtrace_lite.llm_factory import create_llm, test_llm_connection
+from ragtrace_lite.llm_factory import create_llm, check_llm_connection
 from ragtrace_lite.config_loader import Config, LLMConfig, EmbeddingConfig
 
 
@@ -18,7 +18,7 @@ class TestLLMFactory:
         return Config(
             llm=LLMConfig(
                 provider="hcx",
-                api_key="test_api_key",
+                api_key="nv-test_api_key",
                 model_name="HCX-005"
             ),
             embedding=EmbeddingConfig(
@@ -35,8 +35,9 @@ class TestLLMFactory:
         
         assert llm is not None
         assert hasattr(llm, 'invoke')
-        assert hasattr(llm, 'api_key')
-        assert llm.api_key == "test_api_key"
+        # Check that adapter has the API key
+        assert hasattr(llm.adapter, 'api_key')
+        assert llm.adapter.api_key == "nv-test_api_key"
     
     def test_create_gemini_llm(self, config):
         """Test creating Gemini LLM instance"""
@@ -63,7 +64,7 @@ class TestLLMFactory:
         with pytest.raises(ValueError, match="API 키가 설정되지 않았습니다"):
             create_llm(config)
     
-    @patch('ragtrace_lite.llm_factory.requests.post')
+    @patch('requests.post')
     def test_test_llm_connection_hcx_success(self, mock_post):
         """Test successful HCX connection test"""
         # Mock successful response
@@ -79,10 +80,10 @@ class TestLLMFactory:
         mock_llm = Mock()
         mock_llm.invoke.return_value = Mock(content="Test response")
         
-        result = test_llm_connection(mock_llm, "hcx")
+        result = check_llm_connection(mock_llm, "hcx")
         assert result is True
     
-    @patch('ragtrace_lite.llm_factory.requests.post')
+    @patch('requests.post')
     def test_test_llm_connection_hcx_failure(self, mock_post):
         """Test failed HCX connection test"""
         # Mock failed response
@@ -92,16 +93,20 @@ class TestLLMFactory:
         mock_llm = Mock()
         mock_llm.invoke.side_effect = Exception("Connection error")
         
-        result = test_llm_connection(mock_llm, "hcx")
+        result = check_llm_connection(mock_llm, "hcx")
         assert result is False
     
     def test_test_llm_connection_gemini_success(self):
         """Test successful Gemini connection test"""
-        # Create mock LLM
+        # Create mock LLM with async support
         mock_llm = Mock()
         mock_llm.invoke.return_value = Mock(content="Test response")
         
-        result = test_llm_connection(mock_llm, "gemini")
+        # Mock async call 
+        from unittest.mock import AsyncMock
+        mock_llm._acall = AsyncMock(return_value="Test response")
+        
+        result = check_llm_connection(mock_llm, "gemini")
         assert result is True
     
     def test_test_llm_connection_gemini_failure(self):
@@ -110,7 +115,7 @@ class TestLLMFactory:
         mock_llm = Mock()
         mock_llm.invoke.side_effect = Exception("API key invalid")
         
-        result = test_llm_connection(mock_llm, "gemini")
+        result = check_llm_connection(mock_llm, "gemini")
         assert result is False
     
     def test_hcx_rate_limiting(self, config):

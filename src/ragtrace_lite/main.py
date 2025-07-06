@@ -23,7 +23,7 @@ from uuid import uuid4
 
 # Use relative imports for package modules
 from .config_loader import load_config, Config
-from .llm_factory import create_llm, test_llm_connection
+from .llm_factory import create_llm, check_llm_connection
 from .data_processor import DataProcessor
 from .evaluator import RagasEvaluator
 from .db_manager import DatabaseManager
@@ -85,7 +85,7 @@ class RAGTraceLite:
             self.llm = create_llm(self.config)
             
             # 연결 테스트
-            if not test_llm_connection(self.llm, self.config.llm.provider):
+            if not check_llm_connection(self.llm, self.config.llm.provider):
                 return False
             
             # 평가기 초기화

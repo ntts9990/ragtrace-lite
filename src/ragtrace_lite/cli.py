@@ -78,6 +78,14 @@ def main():
     # Version command
     version_parser = subparsers.add_parser('version', help='Show version information')
     
+    # Dashboard command
+    dashboard_parser = subparsers.add_parser('dashboard', help='Generate web dashboard')
+    dashboard_parser.add_argument(
+        '--open',
+        action='store_true',
+        help='Open dashboard in browser after generation'
+    )
+    
     args = parser.parse_args()
     
     if args.command == 'evaluate':
@@ -86,6 +94,8 @@ def main():
         list_datasets(args)
     elif args.command == 'version':
         show_version()
+    elif args.command == 'dashboard':
+        run_dashboard(args)
     else:
         parser.print_help()
         sys.exit(1)
@@ -104,11 +114,13 @@ def run_evaluation(args):
             llm_provider=args.llm
         )
         
+        app.cleanup()
+        
         if not success:
             logger.error("Evaluation failed")
             sys.exit(1)
-            
-        app.cleanup()
+        else:
+            sys.exit(0)
         
     except Exception as e:
         logger.error(f"Evaluation failed: {str(e)}")
@@ -140,6 +152,30 @@ def show_version():
     print(f"RAGTrace Lite v{__version__}")
     print("Licensed under MIT OR Apache-2.0")
     print("For more information: https://github.com/yourusername/ragtrace-lite")
+
+
+def run_dashboard(args):
+    """Generate web dashboard"""
+    try:
+        from .web_dashboard import generate_web_dashboard
+        
+        dashboard_path = generate_web_dashboard()
+        print(f"✅ 웹 대시보드 생성 완료: {dashboard_path}")
+        
+        if args.open:
+            import webbrowser
+            import os
+            dashboard_url = f"file://{os.path.abspath(dashboard_path)}"
+            webbrowser.open(dashboard_url)
+            print(f"🌐 브라우저에서 대시보드 열기: {dashboard_url}")
+        else:
+            import os
+            dashboard_url = f"file://{os.path.abspath(dashboard_path)}"
+            print(f"🌐 대시보드 URL: {dashboard_url}")
+            
+    except Exception as e:
+        logger.error(f"Dashboard generation failed: {e}")
+        sys.exit(1)
 
 
 def main_enhanced():

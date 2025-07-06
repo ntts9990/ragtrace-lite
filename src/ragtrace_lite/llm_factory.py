@@ -124,7 +124,7 @@ class HcxAdapter:
     
     # 클래스 변수로 마지막 요청 시간 저장
     _last_request_time = 0
-    _min_request_interval = 2.0  # 최소 2초 간격 (HCX API 제한 대응)
+    _min_request_interval = 10.0  # 최소 10초 간격 (HCX API 제한 대응)
     
     def __init__(self, api_key: str, model_name: str = "HCX-005"):
         # API 키 검증
@@ -151,67 +151,92 @@ class HcxAdapter:
         
         print(f"🤖 HCX 어댑터 초기화: {model_name}")
     
-    async def agenerate_answer(self, prompt: str, **kwargs) -> str:
-        """HCX API 비동기 호출"""
-        try:
-            # Rate limiting - 요청 간 최소 간격 유지
-            current_time = time.time()
-            time_since_last = current_time - HcxAdapter._last_request_time
-            if time_since_last < HcxAdapter._min_request_interval:
-                wait_time = HcxAdapter._min_request_interval - time_since_last
-                await asyncio.sleep(wait_time)
-            
-            HcxAdapter._last_request_time = time.time()
-            
-            payload = {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "topP": kwargs.get('top_p', 0.8),
-                "topK": kwargs.get('top_k', 0),
-                "maxTokens": kwargs.get('max_tokens', 1000),
-                "temperature": kwargs.get('temperature', 0.5),
-                "repetitionPenalty": kwargs.get('repetition_penalty', 1.1),
-                "stop": [],
-                "includeAiFilters": True,
-                "seed": 0
-            }
-            
-            # 각 요청마다 새로운 요청 ID 생성
-            headers = self.headers.copy()
-            headers["X-NCP-CLOVASTUDIO-REQUEST-ID"] = str(uuid.uuid4())
-            
-            # aiohttp 비동기 요청
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_url,
-                    headers=headers,
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    
-                    if response.status == 200:
-                        result = await response.json()
+    async def agenerate_answer(self, prompt: str, max_retries: int = 3, **kwargs) -> str:
+        """HCX API 비동기 호출 (재시도 로직 포함)"""
+        for attempt in range(max_retries + 1):
+            try:
+                # Rate limiting - 요청 간 최소 간격 유지
+                current_time = time.time()
+                time_since_last = current_time - HcxAdapter._last_request_time
+                if time_since_last < HcxAdapter._min_request_interval:
+                    wait_time = HcxAdapter._min_request_interval - time_since_last
+                    print(f"⏱️  HCX Rate limit 대기: {wait_time:.1f}초")
+                    await asyncio.sleep(wait_time)
+                
+                HcxAdapter._last_request_time = time.time()
+                
+                payload = {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "topP": kwargs.get('top_p', 0.8),
+                    "topK": kwargs.get('top_k', 0),
+                    "maxTokens": kwargs.get('max_tokens', 1000),
+                    "temperature": kwargs.get('temperature', 0.5),
+                    "repetitionPenalty": kwargs.get('repetition_penalty', 1.1),
+                    "stop": [],
+                    "includeAiFilters": True,
+                    "seed": 0
+                }
+                
+                # 각 요청마다 새로운 요청 ID 생성
+                headers = self.headers.copy()
+                headers["X-NCP-CLOVASTUDIO-REQUEST-ID"] = str(uuid.uuid4())
+                
+                # aiohttp 비동기 요청
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        self.api_url,
+                        headers=headers,
+                        json=payload,
+                        timeout=aiohttp.ClientTimeout(total=30)
+                    ) as response:
                         
-                        if 'result' in result and 'message' in result['result']:
-                            content = result['result']['message']['content']
-                            return content if content else "HCX API에서 빈 응답을 받았습니다."
+                        if response.status == 200:
+                            result = await response.json()
+                            
+                            if 'result' in result and 'message' in result['result']:
+                                content = result['result']['message']['content']
+                                return content if content else "HCX API에서 빈 응답을 받았습니다."
+                            else:
+                                return f"HCX API 응답 형식 오류: {result}"
+                                
+                        elif response.status == 429:  # Rate limit 오류
+                            error_text = await response.text()
+                            if attempt < max_retries:
+                                wait_time = (attempt + 1) * 10  # 지수적 백오프: 10초, 20초, 30초
+                                print(f"❌ HCX Rate limit (시도 {attempt + 1}/{max_retries + 1}): {wait_time}초 후 재시도")
+                                await asyncio.sleep(wait_time)
+                                continue
+                            else:
+                                print(f"❌ HCX Rate limit 최대 재시도 초과: {error_text}")
+                                return f"HCX API Rate limit 초과: {error_text}"
                         else:
-                            return f"HCX API 응답 형식 오류: {result}"
-                    else:
-                        error_text = await response.text()
-                        print(f"❌ HCX API 오류 {response.status}: {error_text}")
-                        return f"HCX API 오류 ({response.status}): {error_text}"
-                        
-        except asyncio.TimeoutError:
-            print("❌ HCX API 타임아웃")
-            return "HCX API 요청 타임아웃"
-        except Exception as e:
-            print(f"❌ HCX API 오류: {e}")
-            return f"HCX API 오류: {str(e)}"
+                            error_text = await response.text()
+                            print(f"❌ HCX API 오류 {response.status}: {error_text}")
+                            return f"HCX API 오류 ({response.status}): {error_text}"
+                            
+            except asyncio.TimeoutError:
+                if attempt < max_retries:
+                    print(f"❌ HCX API 타임아웃 (시도 {attempt + 1}/{max_retries + 1}): 재시도")
+                    await asyncio.sleep(5)
+                    continue
+                else:
+                    print("❌ HCX API 타임아웃 최대 재시도 초과")
+                    return "HCX API 요청 타임아웃"
+            except Exception as e:
+                if attempt < max_retries:
+                    print(f"❌ HCX API 오류 (시도 {attempt + 1}/{max_retries + 1}): {e}")
+                    await asyncio.sleep(5)
+                    continue
+                else:
+                    print(f"❌ HCX API 최대 재시도 초과: {e}")
+                    return f"HCX API 오류: {str(e)}"
+        
+        return "HCX API 최대 재시도 초과"
     
     def generate_answer(self, prompt: str, **kwargs) -> str:
         """동기 호출 (비동기를 동기로 래핑)"""
@@ -259,6 +284,15 @@ class LLMAdapterWrapper(LLM):
                      run_manager: Optional[AsyncCallbackManagerForLLMRun] = None, **kwargs: Any) -> str:
         """비동기 호출"""
         return await self.adapter.agenerate_answer(prompt, **kwargs)
+    
+    async def agenerate(self, prompts: List[str | StringPromptValue], **kwargs: Any):
+        """RAGAS가 원하는 비동기 generate 메서드"""
+        results = []
+        for prompt in prompts:
+            prompt_str = prompt.text if hasattr(prompt, 'text') else str(prompt)
+            result = await self.adapter.agenerate_answer(prompt_str, **kwargs)
+            results.append(LLMResult(generations=[[Generation(text=result)]]))
+        return LLMResult(generations=[gen.generations[0] for gen in results])
     
     def generate(self, prompts: List[str | StringPromptValue], **kwargs: Any):
         """RAGAS 호환 generate - 비동기 컨텍스트 감지"""
@@ -374,7 +408,7 @@ async def test_llm_connection_async(llm: LLM, provider: str) -> bool:
         return False
 
 
-def test_llm_connection(llm: LLM, provider: str) -> bool:
+def check_llm_connection(llm: LLM, provider: str) -> bool:
     """LLM 연결 테스트 (동기 래퍼)"""
     try:
         return asyncio.run(test_llm_connection_async(llm, provider))

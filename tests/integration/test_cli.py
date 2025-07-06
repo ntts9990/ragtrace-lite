@@ -41,7 +41,7 @@ class TestCLI:
         # Verify method was called
         mock_app.evaluate_dataset.assert_called_once()
         call_args = mock_app.evaluate_dataset.call_args
-        assert call_args[0][0] == temp_data_file
+        assert call_args.kwargs['data_path'] == temp_data_file
     
     @patch('ragtrace_lite.cli.RAGTraceLite')
     def test_cli_evaluate_with_options(self, mock_app_class, mock_argv, temp_data_file):

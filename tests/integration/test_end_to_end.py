@@ -49,7 +49,7 @@ class TestEndToEnd:
         return mock_evaluate
     
     @patch('ragtrace_lite.llm_factory.create_llm')
-    @patch('ragtrace_lite.llm_factory.test_llm_connection')
+    @patch('ragtrace_lite.llm_factory.check_llm_connection')
     @patch('ragtrace_lite.evaluator.evaluate')
     def test_complete_evaluation_flow(
         self,
@@ -98,7 +98,7 @@ class TestEndToEnd:
         assert summary['ragas_score'] > 0
     
     @patch('ragtrace_lite.llm_factory.create_llm')
-    @patch('ragtrace_lite.llm_factory.test_llm_connection')
+    @patch('ragtrace_lite.llm_factory.check_llm_connection')
     def test_evaluation_with_llm_failure(
         self,
         mock_test_connection,
@@ -137,7 +137,7 @@ class TestEndToEnd:
     
     @pytest.mark.parametrize("file_format", ["json", "xlsx", "csv"])
     @patch('ragtrace_lite.llm_factory.create_llm')
-    @patch('ragtrace_lite.llm_factory.test_llm_connection')
+    @patch('ragtrace_lite.llm_factory.check_llm_connection')
     @patch('ragtrace_lite.evaluator.evaluate')
     def test_multiple_file_formats(
         self,
