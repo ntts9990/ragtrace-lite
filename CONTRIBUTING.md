@@ -248,9 +248,7 @@ RAGTrace Lite에 기여해주셔서 감사합니다! 이 문서는 프로젝트�
 
 질문이나 도움이 필요하면:
 
-1. [Discussions](https://github.com/yourusername/ragtrace-lite/discussions) 참여
-2. [Discord 채널](https://discord.gg/ragtrace-lite) 참여
-3. maintainers@ragtrace-lite.com 이메일
+ntts9990@gmail.com 이메일
 
 ## 라이선스
 
