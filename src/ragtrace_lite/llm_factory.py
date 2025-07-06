@@ -459,7 +459,11 @@ def create_llm(config: Config) -> LLM:
                 api_key=config.llm.api_key,
                 model_name=model_name
             )
-            return LLMAdapterWrapper(adapter)
+            
+            # HCX는 프록시로 감싸서 반환
+            from .hcx_proxy import HCXRAGASProxy
+            base_llm = LLMAdapterWrapper(adapter)
+            return HCXRAGASProxy(base_llm)
             
         else:
             raise ValueError(f"지원하지 않는 LLM 제공자: {provider}")

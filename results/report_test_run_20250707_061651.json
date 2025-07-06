@@ -1,0 +1,43 @@
+{
+  "run_id": "test_run_20250707_061651",
+  "timestamp": "2025-07-07T06:16:51.185020",
+  "config": {
+    "llm": "hcx",
+    "model": "HCX-005",
+    "embedding": "bge_m3"
+  },
+  "summary": {
+    "total_items": 2,
+    "metrics": {}
+  },
+  "details": [
+    {
+      "user_input": "한국의 수도는 어디인가요?",
+      "retrieved_contexts": [
+        "서울특별시는 대한민국의 수도이자 최대 도시로, 정치, 경제, 문화의 중심지입니다.",
+        "서울의 인구는 약 950만 명으로 전체 인구의 약 18%가 거주합니다."
+      ],
+      "response": "한국의 수도는 서울입니다. 서울은 약 950만 명의 인구가 거주하는 대한민국 최대의 도시입니다.",
+      "reference": "",
+      "faithfulness": NaN,
+      "answer_relevancy": NaN,
+      "context_precision": NaN,
+      "context_recall": NaN,
+      "answer_correctness": NaN
+    },
+    {
+      "user_input": "Python에서 리스트와 튜플의 차이점은?",
+      "retrieved_contexts": [
+        "Python의 리스트는 대괄호 []를 사용하며, 동적으로 크기가 변할 수 있습니다.",
+        "튜플은 소괄호 ()를 사용하며, 메모리 효율적이고 해시 가능합니다."
+      ],
+      "response": "리스트는 가변(mutable) 객체로 요소를 추가, 삭제, 수정할 수 있지만, 튜플은 불변(immutable) 객체로 한 번 생성되면 변경할 수 없습니다.",
+      "reference": "",
+      "faithfulness": NaN,
+      "answer_relevancy": NaN,
+      "context_precision": NaN,
+      "context_recall": NaN,
+      "answer_correctness": NaN
+    }
+  ]
+}

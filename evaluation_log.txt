@@ -1,0 +1,526 @@
+Traceback (most recent call last):
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragtrace_lite/evaluator.py", line 331, in evaluate
+    result = evaluate(
+             ^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragas/_analytics.py", line 227, in wrapper
+    result = func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragas/evaluation.py", line 203, in evaluate
+    embeddings = embedding_factory()
+                 ^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragas/embeddings/base.py", line 377, in embedding_factory
+    openai_embeddings = OpenAIEmbeddings(model=model)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/langchain_openai/embeddings/base.py", line 327, in validate_environment
+    self.client = openai.OpenAI(**client_params, **sync_specific).embeddings  # type: ignore[arg-type]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/openai/_client.py", line 130, in __init__
+    raise OpenAIError(
+openai.OpenAIError: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragtrace_lite/main.py", line 150, in evaluate_dataset
+    results_df = self.evaluator.evaluate(dataset)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragtrace_lite/evaluator.py", line 352, in evaluate
+    raise Exception(f"RAGAS 평가 중 오류 발생: {e}")
+Exception: RAGAS 평가 중 오류 발생: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+2025-07-07 05:29:14,522 - __main__ - ERROR - Evaluation failed
+✅ 데이터베이스 테이블 생성 완료
+📀 데이터베이스 초기화 완료: db/ragtrace_lite.db
+🚀 RAGTrace Lite v0.1.0 시작
+📊 실행 ID: ragtrace_8d6da308
+🔧 LLM 초기화 중: HCX
+   모델: HCX-005
+   API 키: 설정됨
+🤖 HCX 어댑터 초기화: HCX-005
+🔄 HCX LLM 비동기 연결 테스트 중...
+✅ HCX LLM 연결 성공
+테스트 응답: OK! How can I assist you today?...
+🤖 외부 LLM 사용: hcx
+🔧 임베딩 설정: default
+⚠️  OpenAI API 키가 설정되지 않았습니다
+⚠️  임베딩 설정 실패, RAGAS 기본값 사용
+✅ 평가자 초기화 완료
+
+📁 데이터 로딩: data/input/sample.json
+📁 데이터 파일 로딩: data/input/sample.json
+✅ 데이터 로딩 완료: 3개 항목
+🔍 데이터 검증 및 변환 시작
+⚠️  'ground_truth' 컬럼이 없어 answer_correctness 평가가 제한될 수 있습니다
+🔧 contexts 컬럼 변환 중...
+✅ contexts 변환 완료: 평균 2.0개 컨텍스트/항목
+✅ Ground truths 검증 완료: Context recall 평가 가능
+✅ 데이터 검증 및 변환 완료
+✅ RAGAS Dataset 변환 완료
+✅ 데이터 로딩 완료: 3개 항목
+
+💾 평가 실행 기록 생성...
+📊 평가 실행 생성: ragtrace_8d6da308
+
+🔍 RAGAS 평가 시작...
+   - LLM: HCX
+   - 메트릭: faithfulness, answer_relevancy, context_precision, context_recall, answer_correctness
+   - 배치 크기: 1
+
+🚀 RAGAS 평가 시작
+   - 데이터 수: 3개
+   - LLM: hcx
+   - 배치 크기: 1
+🔧 메트릭 설정 중...
+📊 Ground truth 데이터 확인: 5개 메트릭 사용
+  ✅ faithfulness (LLM 기반)
+  ✅ answer_relevancy (LLM + 임베딩 기반)
+  ✅ context_precision (LLM 기반)
+  ✅ context_recall (LLM 기반)
+  ✅ answer_correctness (LLM 기반)
+   - 메트릭: 5개
+✅ 데이터셋 검증 완료
+
+📊 평가 진행 중...
+❌ 평가 실패: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+❌ 평가 수행 실패: RAGAS 평가 중 오류 발생: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+📀 데이터베이스 연결 종료
+2025-07-07 05:29:41,694 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: models/bge-m3
+/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragtrace_lite/evaluator.py:173: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the :class:`~langchain-huggingface package and should be used instead. To use it run `pip install -U :class:`~langchain-huggingface` and import as `from :class:`~langchain_huggingface import HuggingFaceEmbeddings``.
+  lc_embeddings = HuggingFaceEmbeddings(
+2025-07-07 05:29:45,161 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: models/bge-m3
+✅ 데이터베이스 테이블 생성 완료
+📀 데이터베이스 초기화 완료: db/ragtrace_lite.db
+🚀 RAGTrace Lite v0.1.0 시작
+📊 실행 ID: ragtrace_cdf0e917
+🔧 LLM 초기화 중: HCX
+   모델: HCX-005
+   API 키: 설정됨
+🤖 HCX 어댑터 초기화: HCX-005
+🔄 HCX LLM 비동기 연결 테스트 중...
+✅ HCX LLM 연결 성공
+테스트 응답: OK! How can I assist you today?...
+🤖 외부 LLM 사용: hcx
+🔧 임베딩 설정: bge_m3
+📁 BGE-M3 임베딩 초기화
+✅ BGE-M3 모델 발견: models/bge-m3
+🔧 BGE-M3 모델 로딩 (device: mps)...
+✅ BGE-M3 임베딩 로드 완료 (device: mps)
+✅ 임베딩 모델 설정 완료
+✅ 평가자 초기화 완료
+
+📁 데이터 로딩: data/input/sample.json
+📁 데이터 파일 로딩: data/input/sample.json
+✅ 데이터 로딩 완료: 3개 항목
+🔍 데이터 검증 및 변환 시작
+⚠️  'ground_truth' 컬럼이 없어 answer_correctness 평가가 제한될 수 있습니다
+🔧 contexts 컬럼 변환 중...
+✅ contexts 변환 완료: 평균 2.0개 컨텍스트/항목
+✅ Ground truths 검증 완료: Context recall 평가 가능
+✅ 데이터 검증 및 변환 완료
+✅ RAGAS Dataset 변환 완료
+✅ 데이터 로딩 완료: 3개 항목
+
+💾 평가 실행 기록 생성...
+📊 평가 실행 생성: ragtrace_cdf0e917
+
+🔍 RAGAS 평가 시작...
+   - LLM: HCX
+   - 메트릭: faithfulness, answer_relevancy, context_precision, context_recall, answer_correctness
+   - 배치 크기: 1
+
+🚀 RAGAS 평가 시작
+   - 데이터 수: 3개
+   - LLM: hcx
+   - 배치 크기: 1
+🔧 메트릭 설정 중...
+📊 Ground truth 데이터 확인: 5개 메트릭 사용
+  ✅ faithfulness (LLM 기반)
+  ✅ answer_relevancy (LLM + 임베딩 기반)
+  ✅ context_precision (LLM 기반)
+  ✅ context_recall (LLM 기반)
+  ✅ answer_correctness (LLM 기반)
+   - 메트릭: 5개
+✅ 데이터셋 검증 완료
+
+📊 평가 진행 중...
+Evaluating:   0%|          | 0/15 [00:00<?, ?it/s]2025-07-07 05:31:09,043 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:09,043 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:09,043 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:09,043 - ragas.prompt.pydantic_prompt - ERROR - Prompt statement_generator_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:09,043 - ragas.executor - ERROR - Exception raised in Job[0]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:   7%|▋         | 1/15 [01:20<18:52, 80.86s/it]2025-07-07 05:31:10,719 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:10,719 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:10,719 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:10,719 - ragas.prompt.pydantic_prompt - ERROR - Prompt statement_generator_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:10,719 - ragas.executor - ERROR - Exception raised in Job[9]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:  13%|█▎        | 2/15 [01:22<07:25, 34.28s/it]2025-07-07 05:31:19,424 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:19,425 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:19,425 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:19,425 - ragas.prompt.pydantic_prompt - ERROR - Prompt response_relevance_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:19,425 - ragas.executor - ERROR - Exception raised in Job[6]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:  20%|██        | 3/15 [01:31<04:31, 22.60s/it]2025-07-07 05:31:20,207 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:20,208 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:20,208 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:20,208 - ragas.prompt.pydantic_prompt - ERROR - Prompt context_precision_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:20,208 - ragas.executor - ERROR - Exception raised in Job[2]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:  27%|██▋       | 4/15 [01:32<02:33, 13.99s/it]2025-07-07 05:31:49,939 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:49,939 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:49,939 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:49,939 - ragas.prompt.pydantic_prompt - ERROR - Prompt response_relevance_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:59,154 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:59,154 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:59,154 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:59,155 - ragas.prompt.pydantic_prompt - ERROR - Prompt statement_generator_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:31:59,155 - ragas.executor - ERROR - Exception raised in Job[4]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:  33%|███▎      | 5/15 [02:10<03:49, 22.99s/it]2025-07-07 05:32:09,362 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,362 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,362 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,362 - ragas.prompt.pydantic_prompt - ERROR - Prompt context_recall_classification_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,362 - ragas.executor - ERROR - Exception raised in Job[8]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:  40%|████      | 6/15 [02:21<02:47, 18.64s/it]2025-07-07 05:32:09,473 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,473 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,473 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,473 - ragas.prompt.pydantic_prompt - ERROR - Prompt context_recall_classification_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,473 - ragas.executor - ERROR - Exception raised in Job[13]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:  47%|████▋     | 7/15 [02:21<01:40, 12.58s/it]2025-07-07 05:32:09,749 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,749 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,749 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,749 - ragas.prompt.pydantic_prompt - ERROR - Prompt response_relevance_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,749 - ragas.executor - ERROR - Exception raised in Job[1]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:  53%|█████▎    | 8/15 [02:21<01:00,  8.67s/it]2025-07-07 05:32:09,795 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,795 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,795 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,795 - ragas.prompt.pydantic_prompt - ERROR - Prompt response_relevance_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,798 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,798 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,798 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,798 - ragas.prompt.pydantic_prompt - ERROR - Prompt response_relevance_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,810 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,810 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,810 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,810 - ragas.prompt.pydantic_prompt - ERROR - Prompt response_relevance_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,810 - ragas.executor - ERROR - Exception raised in Job[11]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+2025-07-07 05:32:09,901 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,902 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,902 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,902 - ragas.prompt.pydantic_prompt - ERROR - Prompt response_relevance_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,961 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,961 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,961 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:09,961 - ragas.prompt.pydantic_prompt - ERROR - Prompt response_relevance_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,002 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,003 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,003 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,003 - ragas.prompt.pydantic_prompt - ERROR - Prompt response_relevance_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,085 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,085 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,085 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,085 - ragas.prompt.pydantic_prompt - ERROR - Prompt statement_generator_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,085 - ragas.executor - ERROR - Exception raised in Job[14]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:  67%|██████▋   | 10/15 [02:21<00:23,  4.62s/it]2025-07-07 05:32:10,111 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,111 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,111 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,111 - ragas.prompt.pydantic_prompt - ERROR - Prompt statement_generator_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,111 - ragas.executor - ERROR - Exception raised in Job[10]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+2025-07-07 05:32:10,289 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,289 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,289 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,289 - ragas.prompt.pydantic_prompt - ERROR - Prompt context_precision_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,289 - ragas.executor - ERROR - Exception raised in Job[7]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:  80%|████████  | 12/15 [02:22<00:08,  2.79s/it]2025-07-07 05:32:10,334 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,335 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,335 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,335 - ragas.prompt.pydantic_prompt - ERROR - Prompt context_recall_classification_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,335 - ragas.executor - ERROR - Exception raised in Job[3]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+2025-07-07 05:32:10,907 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,907 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,907 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,907 - ragas.prompt.pydantic_prompt - ERROR - Prompt context_precision_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:10,908 - ragas.executor - ERROR - Exception raised in Job[12]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating:  93%|█████████▎| 14/15 [02:22<00:01,  1.88s/it]2025-07-07 05:32:11,085 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:11,085 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:11,085 - ragas.prompt.pydantic_prompt - ERROR - Prompt fix_output_format failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:11,085 - ragas.prompt.pydantic_prompt - ERROR - Prompt statement_generator_prompt failed to parse output: The output parser failed to parse the output including retries.
+2025-07-07 05:32:11,085 - ragas.executor - ERROR - Exception raised in Job[5]: RagasOutputParserException(The output parser failed to parse the output including retries.)
+Evaluating: 100%|██████████| 15/15 [02:22<00:00,  1.53s/it]Evaluating: 100%|██████████| 15/15 [02:22<00:00,  9.53s/it]
+Traceback (most recent call last):
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragtrace_lite/evaluator.py", line 346, in evaluate
+    self._print_evaluation_summary(results_df)
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragtrace_lite/evaluator.py", line 399, in _print_evaluation_summary
+    avg_score = scores.mean()
+                ^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/pandas/core/series.py", line 6560, in mean
+    return NDFrame.mean(self, axis, skipna, numeric_only, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/pandas/core/generic.py", line 12439, in mean
+    return self._stat_function(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/pandas/core/generic.py", line 12396, in _stat_function
+    return self._reduce(
+           ^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/pandas/core/series.py", line 6468, in _reduce
+    return op(delegate, skipna=skipna, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/pandas/core/nanops.py", line 147, in f
+    result = alt(values, axis=axis, skipna=skipna, **kwds)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/pandas/core/nanops.py", line 404, in new_func
+    result = func(values, axis=axis, skipna=skipna, mask=mask, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/pandas/core/nanops.py", line 720, in nanmean
+    the_sum = _ensure_numeric(the_sum)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/pandas/core/nanops.py", line 1701, in _ensure_numeric
+    raise TypeError(f"Could not convert string '{x}' to numeric")
+TypeError: Could not convert string '한국의 수도는 어디인가요?라면은 어떻게 조리하나요?Python에서 리스트와 튜플의 차이점은 무엇인가요?' to numeric
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragtrace_lite/main.py", line 150, in evaluate_dataset
+    results_df = self.evaluator.evaluate(dataset)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/isle/.pyenv/versions/3.11.10/lib/python3.11/site-packages/ragtrace_lite/evaluator.py", line 352, in evaluate
+    raise Exception(f"RAGAS 평가 중 오류 발생: {e}")
+Exception: RAGAS 평가 중 오류 발생: Could not convert string '한국의 수도는 어디인가요?라면은 어떻게 조리하나요?Python에서 리스트와 튜플의 차이점은 무엇인가요?' to numeric
+2025-07-07 05:32:11,513 - __main__ - ERROR - Evaluation failed
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 8.5초
+⏱️  HCX Rate limit 대기: 9.2초
+⏱️  HCX Rate limit 대기: 9.0초
+⏱️  HCX Rate limit 대기: 9.0초
+⏱️  HCX Rate limit 대기: 8.9초
+⏱️  HCX Rate limit 대기: 8.9초
+⏱️  HCX Rate limit 대기: 8.8초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.6초
+⏱️  HCX Rate limit 대기: 8.6초
+⏱️  HCX Rate limit 대기: 8.5초
+⏱️  HCX Rate limit 대기: 8.5초
+⏱️  HCX Rate limit 대기: 8.2초
+⏱️  HCX Rate limit 대기: 8.1초
+⏱️  HCX Rate limit 대기: 8.0초
+⏱️  HCX Rate limit 대기: 7.9초
+⏱️  HCX Rate limit 대기: 7.9초
+⏱️  HCX Rate limit 대기: 7.8초
+⏱️  HCX Rate limit 대기: 7.8초
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+⏱️  HCX Rate limit 대기: 9.2초
+⏱️  HCX Rate limit 대기: 9.2초
+⏱️  HCX Rate limit 대기: 9.1초
+⏱️  HCX Rate limit 대기: 8.9초
+⏱️  HCX Rate limit 대기: 8.9초
+⏱️  HCX Rate limit 대기: 8.9초
+⏱️  HCX Rate limit 대기: 8.8초
+⏱️  HCX Rate limit 대기: 8.8초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.2초
+⏱️  HCX Rate limit 대기: 8.2초
+⏱️  HCX Rate limit 대기: 8.1초
+⏱️  HCX Rate limit 대기: 8.0초
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.7초
+⏱️  HCX Rate limit 대기: 9.7초
+⏱️  HCX Rate limit 대기: 9.7초
+⏱️  HCX Rate limit 대기: 9.6초
+⏱️  HCX Rate limit 대기: 9.6초
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 8.2초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.0초
+⏱️  HCX Rate limit 대기: 8.4초
+⏱️  HCX Rate limit 대기: 8.2초
+⏱️  HCX Rate limit 대기: 8.2초
+⏱️  HCX Rate limit 대기: 8.2초
+⏱️  HCX Rate limit 대기: 7.6초
+⏱️  HCX Rate limit 대기: 9.2초
+⏱️  HCX Rate limit 대기: 9.1초
+⏱️  HCX Rate limit 대기: 8.9초
+⏱️  HCX Rate limit 대기: 8.8초
+⏱️  HCX Rate limit 대기: 8.8초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.7초
+⏱️  HCX Rate limit 대기: 8.2초
+⏱️  HCX Rate limit 대기: 8.2초
+⏱️  HCX Rate limit 대기: 8.2초
+⏱️  HCX Rate limit 대기: 8.1초
+⏱️  HCX Rate limit 대기: 8.0초
+⏱️  HCX Rate limit 대기: 8.0초
+⏱️  HCX Rate limit 대기: 7.6초
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+❌ HCX Rate limit (시도 1/4): 10초 후 재시도
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+⏱️  HCX Rate limit 대기: 9.8초
+⏱️  HCX Rate limit 대기: 9.8초
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+❌ HCX Rate limit (시도 2/4): 20초 후 재시도
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 10.0초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+⏱️  HCX Rate limit 대기: 9.9초
+✅ 평가 완료!
+
+📈 평가 결과 요약:
+==================================================
+❌ 평가 실패: Could not convert string '한국의 수도는 어디인가요?라면은 어떻게 조리하나요?Python에서 리스트와 튜플의 차이점은 무엇인가요?' to numeric
+❌ 평가 수행 실패: RAGAS 평가 중 오류 발생: Could not convert string '한국의 수도는 어디인가요?라면은 어떻게 조리하나요?Python에서 리스트와 튜플의 차이점은 무엇인가요?' to numeric
+📀 데이터베이스 연결 종료

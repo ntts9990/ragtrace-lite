@@ -6,7 +6,7 @@ llm:
   model_name: "HCX-005"  # Default model
 
 embedding:
-  provider: "default"  # default | bge_m3
+  provider: "bge_m3"   # default | bge_m3
   device: "auto"       # auto | cpu | cuda | mps (for BGE-M3)
 
 data:

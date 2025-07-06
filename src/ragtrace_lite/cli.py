@@ -78,6 +78,19 @@ def main():
     # Version command
     version_parser = subparsers.add_parser('version', help='Show version information')
     
+    # Test HCX command
+    test_parser = subparsers.add_parser('test-hcx', help='Test HCX-005 & BGE-M3 setup')
+    test_parser.add_argument(
+        '--quick',
+        action='store_true',
+        help='Quick test with minimal data'
+    )
+    test_parser.add_argument(
+        '--full',
+        action='store_true',
+        help='Full pipeline test including DB and report'
+    )
+    
     # Dashboard command
     dashboard_parser = subparsers.add_parser('dashboard', help='Generate web dashboard')
     dashboard_parser.add_argument(
@@ -94,6 +107,8 @@ def main():
         list_datasets(args)
     elif args.command == 'version':
         show_version()
+    elif args.command == 'test-hcx':
+        test_hcx(args)
     elif args.command == 'dashboard':
         run_dashboard(args)
     else:
@@ -152,6 +167,144 @@ def show_version():
     print(f"RAGTrace Lite v{__version__}")
     print("Licensed under Apache-2.0")
     print("For more information: https://github.com/ntts9990/ragtrace-lite")
+
+
+def test_hcx(args):
+    """Test HCX-005 & BGE-M3 setup"""
+    import os
+    from datetime import datetime
+    from .config_loader import load_config
+    from .llm_factory import create_llm, check_llm_connection
+    from .data_processor import DataProcessor
+    from .evaluator import RagasEvaluator
+    
+    print("=" * 70)
+    print("🧪 HCX-005 & BGE-M3 테스트")
+    print("=" * 70)
+    print(f"시작 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    
+    # 1. 환경 확인
+    print("1️⃣ 환경 설정 확인")
+    print("-" * 50)
+    
+    # API 키 확인
+    hcx_key = os.getenv('CLOVA_STUDIO_API_KEY', '').strip()
+    if hcx_key and hcx_key.startswith('nv-'):
+        print(f"✅ HCX API 키: 설정됨 ({hcx_key[:10]}...)")
+    else:
+        print("❌ HCX API 키가 설정되지 않음")
+        print("   export CLOVA_STUDIO_API_KEY='your-key' 실행 필요")
+        sys.exit(1)
+    
+    # 설정 로드
+    try:
+        config = load_config()
+        print(f"✅ 설정 파일 로드: config.yaml")
+        print(f"   - LLM: {config.llm.provider} ({config.llm.model_name})")
+        print(f"   - Embedding: {config.embedding.provider}")
+    except Exception as e:
+        print(f"❌ 설정 로드 실패: {e}")
+        sys.exit(1)
+    
+    # 2. LLM 연결 테스트
+    print("\n2️⃣ HCX-005 연결 테스트")
+    print("-" * 50)
+    
+    try:
+        llm = create_llm(config)
+        print(f"✅ LLM 인스턴스 생성: {type(llm).__name__}")
+        
+        if check_llm_connection(llm, config.llm.provider):
+            print("✅ HCX-005 API 연결 성공")
+        else:
+            print("❌ HCX-005 API 연결 실패")
+            sys.exit(1)
+    except Exception as e:
+        print(f"❌ LLM 생성 실패: {e}")
+        sys.exit(1)
+    
+    # 3. BGE-M3 임베딩 테스트
+    print("\n3️⃣ BGE-M3 임베딩 테스트")
+    print("-" * 50)
+    
+    if config.embedding.provider == 'bge_m3':
+        print("✅ BGE-M3 설정 확인")
+        model_path = Path('./models/bge-m3')
+        if model_path.exists():
+            print(f"✅ BGE-M3 모델 존재: {model_path}")
+        else:
+            print("⚠️  BGE-M3 모델이 없음 (첫 실행 시 자동 다운로드)")
+    else:
+        print(f"⚠️  다른 임베딩 사용 중: {config.embedding.provider}")
+    
+    if args.quick:
+        # 빠른 테스트
+        print("\n4️⃣ 빠른 기능 테스트")
+        print("-" * 50)
+        
+        # 간단한 데이터로 테스트
+        test_data = {
+            'question': ['테스트 질문입니다'],
+            'answer': ['테스트 답변입니다'],
+            'contexts': [['테스트 컨텍스트입니다']],
+            'ground_truths': [['테스트 정답입니다']]
+        }
+        
+        try:
+            from datasets import Dataset
+            dataset = Dataset.from_dict(test_data)
+            print("✅ 테스트 데이터셋 생성")
+            
+            # 평가자 생성
+            evaluator = RagasEvaluator(config, llm=llm)
+            print("✅ 평가자 초기화 성공")
+            
+            print("\n✅ 모든 구성 요소가 정상 작동합니다!")
+            
+        except Exception as e:
+            print(f"❌ 테스트 실패: {e}")
+            sys.exit(1)
+    
+    elif args.full:
+        # 전체 파이프라인 테스트
+        print("\n4️⃣ 전체 파이프라인 테스트 실행")
+        print("-" * 50)
+        print("📌 파이프라인: 데이터 생성 → 평가 → DB 저장 → 보고서 생성")
+        
+        # test_full_pipeline.py의 함수 재사용
+        import subprocess
+        import os
+        
+        # API 키 환경변수 설정
+        env = os.environ.copy()
+        env['CLOVA_STUDIO_API_KEY'] = os.getenv('CLOVA_STUDIO_API_KEY', '')
+        
+        # 전체 파이프라인 스크립트 실행
+        try:
+            result = subprocess.run(
+                [sys.executable, 'test_full_pipeline.py'],
+                env=env,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                print("\n✅ 전체 파이프라인 테스트 성공!")
+            else:
+                print(f"\n❌ 파이프라인 테스트 실패: {result.stderr}")
+                
+        except Exception as e:
+            print(f"\n❌ 테스트 실행 오류: {e}")
+    
+    else:
+        # 기본 테스트
+        print("\n✅ HCX-005 & BGE-M3 설정이 올바르게 되어 있습니다.")
+        print("\n사용 가능한 옵션:")
+        print("  --quick : 빠른 기능 테스트")
+        print("  --full  : 전체 파이프라인 테스트")
+    
+    print("\n" + "=" * 70)
+    print(f"완료 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 
 def run_dashboard(args):

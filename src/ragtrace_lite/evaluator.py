@@ -320,8 +320,8 @@ class RagasEvaluator:
         
         print(f"   - 메트릭: {len(self.metrics)}개")
         
-        # 데이터셋 검증
-        self._validate_dataset(dataset)
+        # 데이터셋 검증 및 수정
+        dataset = self._validate_dataset(dataset)
         
         try:
             # RAGAS evaluate 호출
@@ -375,8 +375,8 @@ class RagasEvaluator:
             print(f"❌ 평가 실패: {e}")
             raise Exception(f"RAGAS 평가 중 오류 발생: {e}")
     
-    def _validate_dataset(self, dataset: Dataset) -> None:
-        """평가용 데이터셋을 검증합니다."""
+    def _validate_dataset(self, dataset: Dataset) -> Dataset:
+        """평가용 데이터셋을 검증하고 필요시 수정합니다."""
         
         # 기본 검증
         if len(dataset) == 0:
@@ -395,16 +395,22 @@ class RagasEvaluator:
             if 'ground_truths' not in dataset.column_names:
                 print("⚠️  'ground_truths' 컬럼이 없어 answer_correctness/context_recall 평가가 제한될 수 있습니다")
         
-        # reference 컬럼 확인 (context_precision용)
-        if 'context_precision' in self.config.evaluation.metrics:
-            if 'reference' not in dataset.column_names:
-                print("⚠️  'reference' 컬럼이 없어 context_precision 평가를 위해 ground_truths를 reference로 사용합니다")
-                # ground_truths를 reference로 복사
-                if 'ground_truths' in dataset.column_names:
-                    # Dataset 수정은 까다로우므로 임시 해결책
-                    pass
+        # reference 컬럼 확인 및 자동 생성
+        if 'reference' not in dataset.column_names and 'ground_truths' in dataset.column_names:
+            print("⚠️  'reference' 컬럼이 없어 ground_truths를 reference로 변환합니다")
+            # Dataset을 dictionary로 변환하여 수정
+            data_dict = dataset.to_dict()
+            # ground_truths의 첫 번째 요소를 reference로 사용
+            data_dict['reference'] = [
+                gt[0] if gt and len(gt) > 0 else '' 
+                for gt in data_dict['ground_truths']
+            ]
+            # 새로운 Dataset 생성
+            dataset = Dataset.from_dict(data_dict)
+            print("✅ reference 컬럼 생성 완료")
         
         print(f"✅ 데이터셋 검증 완료")
+        return dataset
     
     def _print_evaluation_summary(self, results_df: pd.DataFrame) -> None:
         """평가 결과 요약을 출력합니다."""
