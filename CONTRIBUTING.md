@@ -2,10 +2,6 @@
 
 RAGTrace Lite에 기여해주셔서 감사합니다! 이 문서는 프로젝트에 기여하는 방법을 안내합니다.
 
-## Code of Conduct
-
-이 프로젝트는 [Code of Conduct](CODE_OF_CONDUCT.md)를 따릅니다. 프로젝트에 참여함으로써 이를 준수하는 것에 동의합니다.
-
 ## 기여 방법
 
 ### 1. Issue 보고
