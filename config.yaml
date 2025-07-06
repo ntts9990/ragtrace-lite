@@ -1,0 +1,25 @@
+# RAGTrace Lite Configuration
+
+llm:
+  provider: "hcx"  # gemini | hcx
+  api_key: "${CLOVA_STUDIO_API_KEY}"  # Environment variable
+  model_name: "HCX-005"  # Default model
+
+embedding:
+  provider: "default"  # default | bge_m3
+  device: "auto"       # auto | cpu | cuda | mps (for BGE-M3)
+
+data:
+  input_path: "data/input"
+  supported_formats: ["json", "xlsx"]
+
+database:
+  path: "db/ragtrace_lite.db"
+
+results:
+  output_path: "results"
+
+evaluation:
+  batch_size: 1         # RAGAS batch size - 1 for HCX rate limit
+  show_progress: true   # Show progress bar during evaluation
+  raise_exceptions: false  # Continue on errors

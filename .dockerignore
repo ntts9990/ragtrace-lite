@@ -1,0 +1,114 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Development
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+env/
+venv/
+ENV/
+.venv
+.env
+
+# Project specific
+*.db
+*.db-journal
+*.db-wal
+reports/
+exports/
+logs/
+*.log
+test_*.db
+test_reports/
+test_export*
+
+# Documentation (keep essential docs)
+docs/
+CONTRIBUTING.md
+MIGRATION_GUIDE.md
+SECURITY.md
+CHANGELOG.md
+SEPARATION_CHECKLIST.md
+*.md
+!README.md
+!INSTALLATION.md
+
+# Tests
+tests/
+*test*
+*Test*
+pytest.ini
+.coveragerc
+run_tests.py
+
+# Secrets
+.env*
+!.env.example
+secrets/
+credentials/
+*.key
+*.pem
+*.cert
+
+# Model files (large files)
+models/
+*.bin
+*.onnx
+*.pt
+*.pth
+*.h5
+*.safetensors
+*.pkl
+
+# Data files (keep sample data)
+data/output/
+data/*.db
+quick_results/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+
+# Docker files (avoid recursive builds)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Development files
+.pre-commit-config.yaml
+pyproject.toml.bak
+requirements-dev.txt

@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  ragtrace-lite:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ragtrace-lite:latest
+    container_name: ragtrace-lite
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CLOVA_STUDIO_API_KEY=${CLOVA_STUDIO_API_KEY}
+      - DEFAULT_LLM=${DEFAULT_LLM:-hcx}
+      - DEFAULT_EMBEDDING=${DEFAULT_EMBEDDING:-bge_m3}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+      - ./config.yaml:/app/config.yaml:ro
+    networks:
+      - ragtrace-network
+    restart: unless-stopped
+    command: ["evaluate", "/app/data/evaluation_data.json"]
+
+  ragtrace-lite-enhanced:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ragtrace-lite:latest
+    container_name: ragtrace-lite-enhanced
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CLOVA_STUDIO_API_KEY=${CLOVA_STUDIO_API_KEY}
+      - DEFAULT_LLM=${DEFAULT_LLM:-hcx}
+      - DEFAULT_EMBEDDING=${DEFAULT_EMBEDDING:-bge_m3}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+      - ./config.yaml:/app/config.yaml:ro
+      - elasticsearch-data:/app/exports
+    networks:
+      - ragtrace-network
+    restart: unless-stopped
+    entrypoint: ["ragtrace-lite-enhanced"]
+    command: ["evaluate", "/app/data/evaluation_data.json"]
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: ragtrace-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - ragtrace-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: ragtrace-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - ragtrace-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Development service
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: ragtrace-lite:dev
+    container_name: ragtrace-lite-dev
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CLOVA_STUDIO_API_KEY=${CLOVA_STUDIO_API_KEY}
+      - DEFAULT_LLM=${DEFAULT_LLM:-hcx}
+      - DEFAULT_EMBEDDING=${DEFAULT_EMBEDDING:-bge_m3}
+      - PYTHONPATH=/workspace/src
+    volumes:
+      - .:/workspace
+      - ~/.cache:/home/ragtrace/.cache
+    networks:
+      - ragtrace-network
+    stdin_open: true
+    tty: true
+    command: ["/bin/bash"]
+
+networks:
+  ragtrace-network:
+    driver: bridge
+
+volumes:
+  elasticsearch-data:
+    driver: local
