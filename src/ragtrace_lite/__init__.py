@@ -13,10 +13,10 @@ You may obtain a copy of the License at
 This file has been modified from the original version in the RAGTrace project.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.2"
 __author__ = "RAGTrace Lite Contributors"
-__email__ = "contact@ragtrace-lite.com"
-__license__ = "MIT OR Apache-2.0"
+__email__ = "ntts9990@gmail.com"
+__license__ = "Apache-2.0"
 
 # Package exports
 from .main import RAGTraceLite
