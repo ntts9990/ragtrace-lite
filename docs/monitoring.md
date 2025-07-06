@@ -169,7 +169,7 @@ curl http://localhost:8000/health/detailed
 ```json
 {
   "status": "healthy",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "checks": {
     "database": "ok",
     "llm_gemini": "ok",

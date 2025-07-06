@@ -54,7 +54,7 @@ pip install -e .[all]
 Create a `.env` file and add your API keys:
 ```env
 CLOVA_STUDIO_API_KEY=nv-your-hcx-api-key
-GOOGLE_API_KEY=your-gemini-api-key
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 ### Run Sample Evaluation
@@ -154,17 +154,17 @@ ragtrace-lite version
 ### Python API
 
 ```python
-from ragtrace_lite import RAGTraceEvaluator
-from ragtrace_lite.config_loader import ConfigLoader
+from ragtrace_lite import RAGTraceLite
+from ragtrace_lite.config_loader import load_config
 
 # Load configuration
-config = ConfigLoader.load_config()
+config = load_config()
 
-# Initialize evaluator
-evaluator = RAGTraceEvaluator(config)
+# Initialize RAGTraceLite
+rag_trace = RAGTraceLite(config)
 
 # Run evaluation
-results = evaluator.evaluate("your_data.json")
+results = rag_trace.evaluate("your_data.json")
 ```
 
 ### Environment Configuration
@@ -176,7 +176,7 @@ Create a `.env` file and set your API keys:
 CLOVA_STUDIO_API_KEY=nv-your-hcx-api-key
 
 # Gemini (Google)
-GOOGLE_API_KEY=your-gemini-api-key
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 ## Supported Metrics

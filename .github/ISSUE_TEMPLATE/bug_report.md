@@ -25,7 +25,7 @@ If applicable, add screenshots to help explain your problem.
 **Environment:**
  - OS: [e.g. Ubuntu 22.04]
  - Python version: [e.g. 3.11]
- - RAGTrace Lite version: [e.g. 1.0.0]
+ - RAGTrace Lite version: [e.g. 1.0.4]
  - LLM being used: [e.g. HCX-005, Gemini]
 
 **Additional context**
