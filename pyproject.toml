@@ -8,23 +8,21 @@ version = "1.0.0"
 description = "Lightweight RAG evaluation framework for Korean language"
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT OR Apache-2.0"}
+license = {text = "Apache-2.0"}
 authors = [
-    {name = "RAGTrace Lite Contributors", email = "contact@ragtrace-lite.com"}
+    {name = "RAGTrace Lite Contributors", email = "ntts9990@gmail.com"}
 ]
 maintainers = [
-    {name = "RAGTrace Lite Contributors", email = "contact@ragtrace-lite.com"}
+    {name = "RAGTrace Lite Contributors", email = "ntts9990@gmail.com"}
 ]
 keywords = ["rag", "evaluation", "llm", "ai", "ragas", "korean", "hcx", "gemini"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -100,7 +98,7 @@ ragtrace_lite = ["py.typed"]
 
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -126,7 +124,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

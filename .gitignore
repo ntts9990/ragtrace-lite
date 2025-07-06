@@ -54,10 +54,13 @@ Thumbs.db
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 .tox/
 .mypy_cache/
 .cache
+*.cover
+*.py,cover
 
 # Documentation
 docs/_build/
@@ -100,3 +103,12 @@ data/user_data.json
 # 설정 파일
 config.yaml
 config.yml
+
+# PyPI packaging
+*.egg-info/
+dist/
+build/
+
+# Offline deployment files
+python-installer/
+offline-deployment/

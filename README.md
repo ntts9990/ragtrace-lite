@@ -20,8 +20,24 @@ RAGTrace Lite는 RAG 시스템의 성능을 평가하기 위한 경량화된 프
 
 ## 🚀 빠른 시작
 
-### 1. 저장소 클론 및 설치
+### 📦 PyPI에서 설치 (권장)
+
 ```bash
+# 기본 설치
+pip install ragtrace-lite
+
+# 전체 기능 설치 (LLM + 임베딩 + 향상된 기능)
+pip install "ragtrace-lite[all]"
+
+# 선택적 설치
+pip install "ragtrace-lite[llm]"        # LLM 지원만
+pip install "ragtrace-lite[embeddings]" # 로컬 임베딩만
+```
+
+### 🔧 개발자용 설치
+
+```bash
+# 저장소 클론 및 개발 모드 설치
 git clone https://github.com/ntts9990/ragtrace-lite.git
 cd ragtrace-lite
 
@@ -42,10 +58,10 @@ GOOGLE_API_KEY=your-gemini-api-key
 ### 3. 샘플 평가 실행
 ```bash
 # BGE-M3 + HCX로 평가 실행
-uv run python -m ragtrace_lite.cli evaluate data/sample_data.json --llm hcx
+ragtrace-lite evaluate data/sample_data.json --llm hcx
 
 # 웹 대시보드 생성
-uv run python -m ragtrace_lite.cli dashboard --open
+ragtrace-lite dashboard --open
 ```
 
 ## 💻 플랫폼 지원
@@ -119,59 +135,38 @@ scripts/run_evaluation.bat
 사용자는 두 라이선스 중 하나를 선택하여 사용할 수 있습니다.
 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
 
-## 빠른 시작
+## 📚 설치 및 사용법
 
-### 설치
-
-#### 🚀 UV 사용 (권장)
+### CLI 명령어
 
 ```bash
-# UV 설치
-# macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# 평가 실행
+ragtrace-lite evaluate data.json --llm hcx
 
-# Windows PowerShell  
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+# 데이터셋 목록 확인
+ragtrace-lite list-datasets
 
-# 또는 pip으로
-pip install uv
+# 웹 대시보드 생성
+ragtrace-lite dashboard --open
 
-# RAGTrace Lite 설치
-uv pip install ragtrace-lite
-
-# 전체 기능 설치
-uv pip install "ragtrace-lite[all]"
+# 버전 확인
+ragtrace-lite version
 ```
 
-#### 📦 pip 사용
+### Python API 사용
 
-```bash
-# 기본 설치 (최소 기능)
-pip install ragtrace-lite
+```python
+from ragtrace_lite import RAGTraceEvaluator
+from ragtrace_lite.config_loader import ConfigLoader
 
-# LLM 지원 포함
-pip install "ragtrace-lite[llm]"
+# 설정 로드
+config = ConfigLoader.load_config()
 
-# 로컬 임베딩 포함
-pip install "ragtrace-lite[embeddings]"
+# 평가기 초기화
+evaluator = RAGTraceEvaluator(config)
 
-# 전체 기능
-pip install "ragtrace-lite[all]"
-```
-
-> 💡 **UV 사용을 권장하는 이유**: 더 빠른 의존성 해결, 더 나은 가상환경 관리, 크로스 플랫폼 일관성
-
-### 기본 사용법
-
-```bash
-# 간단한 평가 실행 (HCX-005 + BGE-M3)
-ragtrace-lite evaluate data.json
-
-# LLM 선택
-ragtrace-lite evaluate data.json --llm gemini
-
-# 향상된 기능 사용
-ragtrace-lite-enhanced evaluate data.json
+# 평가 실행
+results = evaluator.evaluate("your_data.json")
 ```
 
 ### 환경 설정
