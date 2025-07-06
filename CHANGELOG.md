@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] - 2025-01-07
+
+### Fixed
+- Fixed TypeError in report_generator.py when metric statistics contain None values
+- Added proper None value handling in metric score formatting
+- Fixed Windows compatibility issue with report generation
+
 ## [1.0.4] - 2025-01-06
 
 ### Changed

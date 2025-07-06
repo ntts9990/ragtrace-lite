@@ -154,7 +154,10 @@ class ReportGenerator:
         
         for metric_name, stats in metric_stats.items():
             description = metric_descriptions.get(metric_name, f'**{metric_name}** - 평가 메트릭')
-            avg_score = stats.get('average', 0)
+            avg_score = stats.get('average', 0) or 0  # None 값 처리
+            min_score = stats.get('minimum', 0) or 0
+            max_score = stats.get('maximum', 0) or 0
+            count = stats.get('count', 0) or 0
             
             section.extend([
                 f"### {metric_name}",
@@ -162,8 +165,8 @@ class ReportGenerator:
                 description,
                 f"",
                 f"- **평균 점수**: {avg_score:.4f}",
-                f"- **점수 범위**: {(stats.get('minimum', 0) or 0):.4f} ~ {(stats.get('maximum', 0) or 0):.4f}",
-                f"- **평가 완료**: {stats.get('count', 0)}개 항목",
+                f"- **점수 범위**: {min_score:.4f} ~ {max_score:.4f}",
+                f"- **평가 완료**: {count}개 항목",
                 ""
             ])
             
@@ -434,6 +437,9 @@ class ReportGenerator:
     
     def _interpret_metric_performance(self, metric_name: str, score: float) -> str:
         """메트릭별 성능 해석"""
+        # None 값 처리
+        if score is None:
+            score = 0.0
         base_interpretation = self._interpret_score(score)
         
         specific_advice = {
