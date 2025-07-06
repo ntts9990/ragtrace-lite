@@ -191,7 +191,22 @@ class ReportGenerator:
             
             if metric_columns:
                 results_df_copy = results_df.copy()
-                results_df_copy['overall_score'] = results_df_copy[metric_columns].mean(axis=1)
+                # 수치형 컬럼만 선택하고 평균 계산
+                numeric_columns = []
+                for col in metric_columns:
+                    if col in results_df_copy.columns:
+                        # 수치형 데이터로 변환 가능한 컬럼만 선택
+                        try:
+                            pd.to_numeric(results_df_copy[col], errors='coerce')
+                            numeric_columns.append(col)
+                        except:
+                            continue
+                
+                if numeric_columns:
+                    numeric_data = results_df_copy[numeric_columns].apply(pd.to_numeric, errors='coerce')
+                    results_df_copy['overall_score'] = numeric_data.mean(axis=1, skipna=True)
+                else:
+                    results_df_copy['overall_score'] = 0
                 
                 # 상위 3개
                 top_3 = results_df_copy.nlargest(3, 'overall_score')
@@ -262,10 +277,16 @@ class ReportGenerator:
             metric_scores = []
             for metric in metric_columns:
                 score = row[metric]
-                if pd.isna(score):
+                if pd.isna(score) or score is None:
                     metric_scores.append("N/A")
                 else:
-                    metric_scores.append(f"{score:.3f}")
+                    try:
+                        # 수치형으로 변환 시도
+                        numeric_score = float(score)
+                        metric_scores.append(f"{numeric_score:.3f}")
+                    except (ValueError, TypeError):
+                        # 변환 실패 시 문자열 그대로 표시
+                        metric_scores.append(str(score))
             
             table_row = f"| {i+1} | {question_short} | " + " | ".join(metric_scores) + " |"
             section.append(table_row)
@@ -343,12 +364,21 @@ class ReportGenerator:
             scores = results_df[metric].dropna()
             if len(scores) == 0:
                 continue
-                
-            # 점수 구간별 분포
-            excellent = (scores >= 0.8).sum()
-            good = ((scores >= 0.6) & (scores < 0.8)).sum()
-            fair = ((scores >= 0.4) & (scores < 0.6)).sum()
-            poor = (scores < 0.4).sum()
+            
+            # 수치형으로 변환 가능한 데이터만 처리
+            try:
+                numeric_scores = pd.to_numeric(scores, errors='coerce').dropna()
+                if len(numeric_scores) == 0:
+                    continue
+                    
+                # 점수 구간별 분포
+                excellent = (numeric_scores >= 0.8).sum()
+                good = ((numeric_scores >= 0.6) & (numeric_scores < 0.8)).sum()
+                fair = ((numeric_scores >= 0.4) & (numeric_scores < 0.6)).sum()
+                poor = (numeric_scores < 0.4).sum()
+                scores = numeric_scores  # 수치형 데이터로 교체
+            except:
+                continue
             
             section.extend([
                 f"**{metric} 분포**:",

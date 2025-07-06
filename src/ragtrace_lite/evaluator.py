@@ -77,10 +77,10 @@ class RagasEvaluator:
         else:
             print("⚠️  임베딩 설정 실패, RAGAS 기본값 사용")
         
-        # 평가 메트릭 설정
-        self.metrics = self._setup_metrics()
+        # 평가 메트릭은 evaluate() 호출 시 데이터셋을 기반으로 설정
+        self.metrics = None
         
-        print(f"✅ 평가자 초기화 완료: {len(self.metrics)}개 메트릭")
+        print(f"✅ 평가자 초기화 완료")
     
     def _setup_embeddings(self):
         """임베딩 모델을 설정합니다."""
@@ -213,13 +213,44 @@ class RagasEvaluator:
         except Exception as e:
             raise Exception(f"BGE-M3 모델 다운로드 실패: {e}")
 
-    def _setup_metrics(self) -> List[Any]:
+    def _check_ground_truth_availability(self, dataset: Dataset = None) -> bool:
+        """Ground truth 데이터의 가용성을 확인합니다."""
+        if dataset is None:
+            return False
+        
+        # ground_truths 컬럼이 있는지 확인
+        if 'ground_truths' not in dataset.column_names:
+            return False
+        
+        # ground_truths가 비어있지 않은 항목이 있는지 확인
+        for item in dataset:
+            ground_truths = item.get('ground_truths', [])
+            if ground_truths and len(ground_truths) > 0:
+                # 빈 문자열이 아닌 ground truth가 있는지 확인
+                valid_truths = [gt for gt in ground_truths if isinstance(gt, str) and gt.strip()]
+                if valid_truths:
+                    return True
+        
+        return False
+
+    def _setup_metrics(self, dataset: Dataset = None) -> List[Any]:
         """평가 메트릭을 설정합니다."""
         metrics = []
         
         print("🔧 메트릭 설정 중...")
         
-        for metric_name in self.config.evaluation.metrics:
+        # Ground truth 데이터 가용성 확인
+        has_ground_truths = self._check_ground_truth_availability(dataset)
+        
+        # 메트릭 선택: ground truth가 있으면 5개, 없으면 4개
+        if has_ground_truths:
+            selected_metrics = ["faithfulness", "answer_relevancy", "context_precision", "context_recall", "answer_correctness"]
+            print("📊 Ground truth 데이터 확인: 5개 메트릭 사용")
+        else:
+            selected_metrics = ["faithfulness", "answer_relevancy", "context_precision", "answer_correctness"]
+            print("📊 Ground truth 데이터 없음: 4개 메트릭 사용 (context_recall 제외)")
+        
+        for metric_name in selected_metrics:
             try:
                 if metric_name == "faithfulness":
                     metric = faithfulness
@@ -280,9 +311,14 @@ class RagasEvaluator:
         """
         print(f"\n🚀 RAGAS 평가 시작")
         print(f"   - 데이터 수: {len(dataset)}개")
-        print(f"   - 메트릭: {len(self.metrics)}개")
         print(f"   - LLM: {self.config.llm.provider}")
         print(f"   - 배치 크기: {self.config.evaluation.batch_size}")
+        
+        # 데이터셋 기반 메트릭 설정
+        if self.metrics is None:
+            self.metrics = self._setup_metrics(dataset)
+        
+        print(f"   - 메트릭: {len(self.metrics)}개")
         
         # 데이터셋 검증
         self._validate_dataset(dataset)
@@ -297,7 +333,7 @@ class RagasEvaluator:
                 metrics=self.metrics,
                 llm=self.llm,
                 embeddings=self.embeddings,
-                raise_exceptions=not self.config.evaluation.raise_exceptions,
+                raise_exceptions=False,  # 파싱 오류 시에도 계속 진행
                 show_progress=self.config.evaluation.show_progress,
             )
             
@@ -352,23 +388,25 @@ class RagasEvaluator:
         print(f"\n📈 평가 결과 요약:")
         print(f"{'='*50}")
         
+        # 실제 평가된 메트릭 확인
+        evaluated_metrics = [col for col in results_df.columns 
+                           if col not in ['question', 'answer', 'contexts', 'ground_truths', 'reference']]
+        
         # 각 메트릭별 평균 점수
-        for metric_name in self.config.evaluation.metrics:
-            if metric_name in results_df.columns:
-                scores = results_df[metric_name].dropna()
-                if len(scores) > 0:
-                    avg_score = scores.mean()
-                    min_score = scores.min()
-                    max_score = scores.max()
-                    
-                    print(f"{metric_name:20}: {avg_score:.4f} (범위: {min_score:.4f}-{max_score:.4f})")
-                else:
-                    print(f"{metric_name:20}: 데이터 없음")
+        for metric_name in evaluated_metrics:
+            scores = results_df[metric_name].dropna()
+            if len(scores) > 0:
+                avg_score = scores.mean()
+                min_score = scores.min()
+                max_score = scores.max()
+                
+                print(f"{metric_name:20}: {avg_score:.4f} (범위: {min_score:.4f}-{max_score:.4f})")
+            else:
+                print(f"{metric_name:20}: 데이터 없음")
         
         # 전체 평균 (RAGAS Score)
-        metric_columns = [col for col in results_df.columns if col in self.config.evaluation.metrics]
-        if metric_columns:
-            overall_scores = results_df[metric_columns].mean(axis=1)
+        if evaluated_metrics:
+            overall_scores = results_df[evaluated_metrics].mean(axis=1)
             overall_avg = overall_scores.mean()
             print(f"{'='*50}")
             print(f"{'전체 평균 (RAGAS Score)':20}: {overall_avg:.4f}")
@@ -385,21 +423,23 @@ class RagasEvaluator:
             'statistics': {}
         }
         
+        # 실제 평가된 메트릭 확인
+        metric_columns = [col for col in results_df.columns 
+                         if col not in ['question', 'answer', 'contexts', 'ground_truths', 'reference']]
+        
         # 메트릭별 통계
-        for metric_name in self.config.evaluation.metrics:
-            if metric_name in results_df.columns:
-                scores = results_df[metric_name].dropna()
-                if len(scores) > 0:
-                    detailed_results['by_metric'][metric_name] = {
-                        'mean': float(scores.mean()),
-                        'std': float(scores.std()),
-                        'min': float(scores.min()),
-                        'max': float(scores.max()),
-                        'count': len(scores)
-                    }
+        for metric_name in metric_columns:
+            scores = results_df[metric_name].dropna()
+            if len(scores) > 0:
+                detailed_results['by_metric'][metric_name] = {
+                    'mean': float(scores.mean()),
+                    'std': float(scores.std()),
+                    'min': float(scores.min()),
+                    'max': float(scores.max()),
+                    'count': len(scores)
+                }
         
         # 전체 통계
-        metric_columns = [col for col in results_df.columns if col in self.config.evaluation.metrics]
         if metric_columns:
             overall_scores = results_df[metric_columns].mean(axis=1)
             detailed_results['summary'] = {

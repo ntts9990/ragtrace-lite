@@ -200,7 +200,12 @@ class HcxAdapter:
                             
                             if 'result' in result and 'message' in result['result']:
                                 content = result['result']['message']['content']
-                                return content if content else "HCX API에서 빈 응답을 받았습니다."
+                                if content:
+                                    # RAGAS 호환성을 위한 응답 후처리
+                                    cleaned_content = self._clean_response_for_ragas(content)
+                                    return cleaned_content
+                                else:
+                                    return "HCX API에서 빈 응답을 받았습니다."
                             else:
                                 return f"HCX API 응답 형식 오류: {result}"
                                 
@@ -237,6 +242,47 @@ class HcxAdapter:
                     return f"HCX API 오류: {str(e)}"
         
         return "HCX API 최대 재시도 초과"
+    
+    def _clean_response_for_ragas(self, content: str) -> str:
+        """RAGAS 호환성을 위한 응답 후처리"""
+        import re
+        import json
+        
+        # JSON 파싱이 필요한 경우 처리
+        if content.strip().startswith('{') and content.strip().endswith('}'):
+            try:
+                # JSON 형태로 파싱 시도
+                data = json.loads(content)
+                if isinstance(data, dict):
+                    # statements나 text 키가 있으면 추출
+                    if 'statements' in data:
+                        return json.dumps({"text": ". ".join(data['statements'])})
+                    elif 'text' in data:
+                        return json.dumps(data)
+                    else:
+                        # 첫 번째 값을 text로 사용
+                        first_value = next(iter(data.values()))
+                        if isinstance(first_value, list):
+                            return json.dumps({"text": ". ".join(first_value)})
+                        else:
+                            return json.dumps({"text": str(first_value)})
+            except json.JSONDecodeError:
+                pass
+        
+        # 일반 텍스트 응답 정리
+        cleaned = content.strip()
+        
+        # 마크다운 포맷팅 제거
+        cleaned = re.sub(r'```.*?```', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'`([^`]+)`', r'\1', cleaned)
+        cleaned = re.sub(r'\*\*([^*]+)\*\*', r'\1', cleaned)
+        cleaned = re.sub(r'\*([^*]+)\*', r'\1', cleaned)
+        
+        # 불필요한 공백 정리
+        cleaned = re.sub(r'\s+', ' ', cleaned)
+        cleaned = cleaned.strip()
+        
+        return cleaned
     
     def generate_answer(self, prompt: str, **kwargs) -> str:
         """동기 호출 (비동기를 동기로 래핑)"""

@@ -132,6 +132,24 @@ class DataProcessor:
             df['ground_truths'] = df['ground_truth'].apply(
                 lambda x: [x] if isinstance(x, str) and x.strip() else []
             )
+        elif 'ground_truths' in df.columns:
+            # ground_truths가 문자열인 경우 리스트로 변환
+            def ensure_list(x):
+                if isinstance(x, str) and x.strip():
+                    return [x.strip()]
+                elif isinstance(x, list):
+                    return [item for item in x if isinstance(item, str) and item.strip()]
+                else:
+                    return []
+            df['ground_truths'] = df['ground_truths'].apply(ensure_list)
+            
+        # Context recall을 위한 ground_truths 검증
+        if 'ground_truths' in df.columns:
+            empty_ground_truths = df['ground_truths'].apply(lambda x: len(x) == 0).sum()
+            if empty_ground_truths > 0:
+                print(f"⚠️  Context recall 제한: {empty_ground_truths}개 항목에 ground_truths 누락")
+            else:
+                print("✅ Ground truths 검증 완료: Context recall 평가 가능")
         
         # reference 컬럼 추가 (context_precision용)
         if 'ground_truth' in df.columns and 'reference' not in df.columns:
