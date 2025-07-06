@@ -164,6 +164,15 @@ class HcxAdapter:
     
     async def agenerate_answer(self, prompt: str, max_retries: int = 3, **kwargs) -> str:
         """HCX API 비동기 호출 (재시도 로직 포함)"""
+        from .hcx_ragas_adapter import HCXRAGASAdapter
+        
+        # 메트릭 타입 감지 및 프롬프트 강화
+        metric_type = HCXRAGASAdapter.detect_metric_type(prompt)
+        self._last_metric_type = metric_type  # 나중에 사용하기 위해 저장
+        
+        # 프롬프트 강화 (JSON 응답 유도)
+        enhanced_prompt = HCXRAGASAdapter.enhance_prompt_for_hcx(prompt, metric_type)
+        
         for attempt in range(max_retries + 1):
             try:
                 # Rate limiting - 요청 간 최소 간격 유지
@@ -180,7 +189,7 @@ class HcxAdapter:
                     "messages": [
                         {
                             "role": "user",
-                            "content": prompt
+                            "content": enhanced_prompt
                         }
                     ],
                     "topP": kwargs.get('top_p', 0.8),
@@ -258,25 +267,29 @@ class HcxAdapter:
         """RAGAS 호환성을 위한 응답 후처리"""
         import re
         import json
+        from .hcx_ragas_adapter import HCXRAGASAdapter
         
-        # JSON 파싱이 필요한 경우 처리
+        # 프롬프트에서 메트릭 타입 감지 (저장된 값 사용)
+        metric_type = getattr(self, '_last_metric_type', None)
+        
+        # HCX RAGAS 어댑터로 파싱
+        try:
+            parsed = HCXRAGASAdapter.parse_hcx_response(content, metric_type)
+            return json.dumps(parsed, ensure_ascii=False)
+        except Exception as e:
+            print(f"⚠️ HCX 응답 파싱 실패, 원본 반환: {e}")
+            
+        # 폴백: 기존 로직
         if content.strip().startswith('{') and content.strip().endswith('}'):
             try:
-                # JSON 형태로 파싱 시도
                 data = json.loads(content)
                 if isinstance(data, dict):
-                    # statements나 text 키가 있으면 추출
-                    if 'statements' in data:
-                        return json.dumps({"text": ". ".join(data['statements'])})
-                    elif 'text' in data:
-                        return json.dumps(data)
-                    else:
-                        # 첫 번째 값을 text로 사용
-                        first_value = next(iter(data.values()))
-                        if isinstance(first_value, list):
-                            return json.dumps({"text": ". ".join(first_value)})
-                        else:
-                            return json.dumps({"text": str(first_value)})
+                    # text를 statements로 변환 (faithfulness용)
+                    if 'text' in data and metric_type == "faithfulness":
+                        text = data['text']
+                        statements = [s.strip() for s in re.split(r'[.。\n]+', text) if s.strip()]
+                        return json.dumps({"statements": statements}, ensure_ascii=False)
+                    return json.dumps(data, ensure_ascii=False)
             except json.JSONDecodeError:
                 pass
         

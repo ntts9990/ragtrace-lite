@@ -21,11 +21,13 @@ __license__ = "Apache-2.0"
 # Package exports
 from .main import RAGTraceLite
 from .config_loader import Config, load_config
+from .hcx_ragas_adapter import HCXRAGASAdapter
 
 __all__ = [
     "RAGTraceLite",
     "Config", 
     "load_config",
+    "HCXRAGASAdapter",
     "__version__",
     "__author__",
     "__email__",

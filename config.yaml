@@ -1,9 +1,9 @@
 # RAGTrace Lite Configuration
 
 llm:
-  provider: "gemini"  # gemini | hcx
-  api_key: "${GEMINI_API_KEY}"  # Environment variable
-  model_name: "gemini-2.0-flash"  # Default model
+  provider: "hcx"  # gemini | hcx
+  api_key: "${CLOVA_STUDIO_API_KEY}"  # Environment variable
+  model_name: "HCX-005"  # Default model
 
 embedding:
   provider: "default"  # default | bge_m3
