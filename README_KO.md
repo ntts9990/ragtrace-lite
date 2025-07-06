@@ -131,8 +131,6 @@ scripts/run_evaluation.bat
 
 이 프로젝트는 **Apache License 2.0**으로 제공됩니다:
 
-- **Apache License 2.0**: [LICENSE-APACHE](LICENSE-APACHE)
-
 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
 
 ## 사용법
@@ -231,7 +229,7 @@ ragtrace-lite/
 
 - **이슈 트래커**: [GitHub Issues](https://github.com/ntts9990/ragtrace-lite/issues)
 - **문서**: [전체 문서](https://github.com/ntts9990/ragtrace-lite/wiki)
-- **이메일**: ntts9990@naver.com
+- **이메일**: ntts9990@gmail.com
 
 ## 감사의 말
 
