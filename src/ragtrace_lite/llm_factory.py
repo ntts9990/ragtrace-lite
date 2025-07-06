@@ -26,6 +26,13 @@ class GeminiAdapter:
     """Gemini API 어댑터 (순수 Python 클래스)"""
     
     def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
+        # API 키 검증 및 정리
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다.")
+        
+        # 줄바꿈 및 공백 제거
+        api_key = api_key.strip()
+        
         self.api_key = api_key
         self.model_name = model_name
         
@@ -127,9 +134,13 @@ class HcxAdapter:
     _min_request_interval = 10.0  # 최소 10초 간격 (HCX API 제한 대응)
     
     def __init__(self, api_key: str, model_name: str = "HCX-005"):
-        # API 키 검증
+        # API 키 검증 및 정리
         if not api_key:
             raise ValueError("CLOVA_STUDIO_API_KEY가 설정되지 않았습니다.")
+        
+        # 줄바꿈 및 공백 제거
+        api_key = api_key.strip()
+        
         if not api_key.startswith("nv-"):
             raise ValueError("CLOVA_STUDIO_API_KEY는 'nv-'로 시작해야 합니다.")
             

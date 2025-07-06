@@ -145,11 +145,11 @@ def load_config(config_path: Optional[str] = None) -> Config:
         provider = os.getenv('DEFAULT_LLM', 'hcx').lower()
         
         if provider == 'gemini':
-            api_key = os.getenv('GEMINI_API_KEY', '')
-            model_name = os.getenv('LLM_MODEL_NAME', 'gemini-2.5-flash')
+            api_key = os.getenv('GEMINI_API_KEY', '').strip()
+            model_name = os.getenv('LLM_MODEL_NAME', 'gemini-2.5-flash').strip()
         elif provider == 'hcx':
-            api_key = os.getenv('CLOVA_STUDIO_API_KEY', '')
-            model_name = os.getenv('LLM_MODEL_NAME', 'HCX-005')
+            api_key = os.getenv('CLOVA_STUDIO_API_KEY', '').strip()
+            model_name = os.getenv('LLM_MODEL_NAME', 'HCX-005').strip()
         else:
             api_key = ''
             model_name = 'default'
@@ -200,11 +200,11 @@ def _merge_environment_variables(yaml_config: Dict[str, Any]) -> Dict[str, Any]:
         if provider == 'gemini':
             env_key = os.getenv('GEMINI_API_KEY')
             if env_key:
-                llm_config['api_key'] = env_key
+                llm_config['api_key'] = env_key.strip()
         elif provider == 'hcx':
             env_key = os.getenv('CLOVA_STUDIO_API_KEY')
             if env_key:
-                llm_config['api_key'] = env_key
+                llm_config['api_key'] = env_key.strip()
     
     return yaml_config
 

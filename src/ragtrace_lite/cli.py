@@ -150,8 +150,8 @@ def list_datasets(args):
 def show_version():
     """Show version information"""
     print(f"RAGTrace Lite v{__version__}")
-    print("Licensed under MIT OR Apache-2.0")
-    print("For more information: https://github.com/yourusername/ragtrace-lite")
+    print("Licensed under Apache-2.0")
+    print("For more information: https://github.com/ntts9990/ragtrace-lite")
 
 
 def run_dashboard(args):

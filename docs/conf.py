@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath('../src'))
 project = 'RAGTrace Lite'
 copyright = '2025, RAGTrace Lite Contributors'
 author = 'RAGTrace Lite Contributors'
-release = '1.0.0'
+release = '1.0.3'
 
 # General configuration
 extensions = [

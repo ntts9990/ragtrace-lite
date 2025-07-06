@@ -595,7 +595,7 @@ def test_logging_system():
             LogLevel.INFO,
             LogCategory.SYSTEM,
             "System started",
-            details={'version': '1.0.0'},
+            details={'version': '1.0.3'},
             component='main'
         )
         

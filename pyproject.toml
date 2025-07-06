@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ragtrace-lite"
-version = "1.0.2"
+version = "1.0.3"
 description = "Lightweight RAG evaluation framework with Korean language support, BGE-M3 embeddings, and HCX-005/Gemini LLMs"
 readme = "README.md"
 requires-python = ">=3.9"

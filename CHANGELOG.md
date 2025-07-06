@@ -7,12 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Initial standalone package structure
-- Dual licensing (MIT/Apache 2.0)
-- Comprehensive installation guide
-- Migration guide from RAGTrace
-- Security policy documentation
+## [1.0.3] - 2025-01-06
+
+### Fixed
+- CLI version command now shows correct version
+- Updated license display to show only Apache-2.0
+- Fixed GitHub repository URL in version command
+
+## [1.0.2] - 2025-01-06
+
+### Changed
+- Removed MIT license, now using only Apache-2.0
+- Updated offline deployment documentation for Windows
+- Enhanced project description
+
+## [1.0.1] - 2025-01-06
+
+### Changed
+- English README translation
+- Updated PyPI package metadata
 
 ## [1.0.0] - 2025-01-06
 

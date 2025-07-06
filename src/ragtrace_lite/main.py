@@ -50,7 +50,8 @@ class RAGTraceLite:
         self.db_manager = DatabaseManager(self.config)
         self.report_generator = ReportGenerator(self.config)
         
-        print(f"🚀 RAGTrace Lite v0.1.0 시작")
+        from . import __version__
+        print(f"🚀 RAGTrace Lite v{__version__} 시작")
         print(f"📊 실행 ID: {self.run_id}")
     
     def initialize_llm(self, provider: Optional[str] = None) -> bool:

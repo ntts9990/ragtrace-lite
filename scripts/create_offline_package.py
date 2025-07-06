@@ -1088,7 +1088,7 @@ scripts\\run_evaluation.bat
 
 ## 📋 패키지 정보
 - **생성일**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-- **버전**: RAGTrace Lite v1.0.0
+- **버전**: RAGTrace Lite v1.0.3
 - **플랫폼**: Windows 10/11
 - **Python**: 3.11.x
 
