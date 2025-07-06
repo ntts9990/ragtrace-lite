@@ -1,21 +1,15 @@
-# Dual License
+Copyright 2025 RAGTrace Lite Contributors
 
-This project is dual-licensed under both the MIT License and the Apache License 2.0.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-## Original Work
-The original RAGTrace project is licensed under the Apache License 2.0.
-See LICENSE-APACHE for the full license text.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-## Modified Work
-The modifications and additions made for RAGTrace Lite are licensed under the MIT License.
-See LICENSE-MIT for the full license text.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
-## Usage
-You may choose to use this software under EITHER:
-- The MIT License (LICENSE-MIT)
-- The Apache License, Version 2.0 (LICENSE-APACHE)
-
-## Attribution
-This project contains code originally from the RAGTrace project (https://github.com/yourusername/RAGTrace).
-Original work Copyright 2024 RAGTrace Contributors
-Modified work Copyright 2025 RAGTrace Lite Contributors
+See LICENSE-APACHE for the full Apache License 2.0 text.

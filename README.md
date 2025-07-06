@@ -1,15 +1,12 @@
-[![PyPI version](https://badge.fury.io/py/ragtrace-lite.svg)](https://badge.fury.io/py/ragtrace-lite)
-[![Python Support](https://img.shields.io/pypi/pyversions/ragtrace-lite.svg)](https://pypi.org/project/ragtrace-lite/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-
 # RAGTrace Lite
 
 A lightweight RAG (Retrieval-Augmented Generation) evaluation framework with Korean language support
 
 > 한국어 버전: [README_KO.md](README_KO.md)
 
+[![PyPI version](https://badge.fury.io/py/ragtrace-lite.svg)](https://badge.fury.io/py/ragtrace-lite)
+[![Python Support](https://img.shields.io/pypi/pyversions/ragtrace-lite.svg)](https://pypi.org/project/ragtrace-lite/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-APACHE)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
 ## Overview
 
@@ -178,39 +175,76 @@ Create a `.env` file and set your API keys:
 
 ```bash
 # HCX-005 (Naver CLOVA Studio)
-CLOVA_STUDIO_API_KEY=your_clova_api_key
+CLOVA_STUDIO_API_KEY=nv-your-hcx-api-key
 
 # Gemini (Google)
-GEMINI_API_KEY=your_gemini_api_key
+GOOGLE_API_KEY=your-gemini-api-key
 ```
 
-## 프로젝트 구조
+## Supported Metrics
+
+### With Ground Truth Data (5 Metrics)
+- **Context Recall**: Recall of retrieved contexts
+- **Context Precision**: Precision of retrieved contexts
+- **Answer Correctness**: Correctness of the answer
+- **Answer Relevancy**: Relevance of the answer to the question
+- **Answer Similarity**: Similarity between generated and ground truth answers
+
+### Without Ground Truth Data (4 Metrics)
+- **Context Relevancy**: Relevance of context to the question
+- **Answer Relevancy**: Relevance of answer to the question
+- **Faithfulness**: How faithful the answer is to the context
+- **Coherence**: Logical coherence of the answer
+
+## Project Structure
 
 ```
 ragtrace-lite/
-├── src/
-│   ├── config_loader.py      # 설정 관리
-│   ├── data_processor.py     # 데이터 처리
-│   ├── db_manager.py         # 데이터베이스 관리
-│   ├── evaluator.py          # RAGAS 평가 엔진
-│   ├── llm_factory.py        # LLM 어댑터
-│   └── report_generator.py   # 보고서 생성
-├── data/                     # 평가 데이터
-├── config.yaml              # 설정 파일
-└── ragtrace_lite.py         # CLI 진입점
+├── src/ragtrace_lite/          # Source code
+│   ├── __init__.py
+│   ├── cli.py                  # CLI interface
+│   ├── config_loader.py        # Configuration management
+│   ├── evaluator.py            # Evaluation engine
+│   ├── llm_factory.py          # LLM integration
+│   ├── db_manager.py           # Database management
+│   └── report_generator.py     # Report generation
+├── tests/                      # Tests
+├── scripts/                    # Utility scripts
+├── data/                       # Sample data
+├── config.yaml                 # Default configuration
+└── pyproject.toml             # Project configuration
 ```
 
-## 기여하기
+## Contributing
 
-기여를 환영합니다! [CONTRIBUTING.md](CONTRIBUTING.md)를 참조하세요.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-## 감사의 글
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-이 프로젝트는 다음 프로젝트들에 기반하고 있습니다:
-- [RAGTrace](https://github.com/ntts9990/RAGTrace) - 원본 프로젝트
-- [RAGAS](https://github.com/explodinggradients/ragas) - RAG 평가 프레임워크
+## Support
 
-## 저작권
+Having issues or questions?
 
-Original work Copyright 2025 RAGTrace Contributors  
-Modified work Copyright 2025 RAGTrace Lite Contributors
+- **Issue Tracker**: [GitHub Issues](https://github.com/ntts9990/ragtrace-lite/issues)
+- **Documentation**: [Full Documentation](https://github.com/ntts9990/ragtrace-lite/wiki)
+- **Email**: ntts9990@naver.com
+
+## Acknowledgments
+
+This project is based on the following open-source projects:
+
+- [RAGAS](https://github.com/explodinggradients/ragas) - RAG evaluation framework
+- [BGE-M3](https://huggingface.co/BAAI/bge-m3) - Multilingual embedding model
+- [LangChain](https://github.com/langchain-ai/langchain) - LLM application framework
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
+
+---
+
+Made with ❤️ by [ntts9990](https://github.com/ntts9990)
