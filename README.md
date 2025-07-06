@@ -229,7 +229,7 @@ Having issues or questions?
 
 - **Issue Tracker**: [GitHub Issues](https://github.com/ntts9990/ragtrace-lite/issues)
 - **Documentation**: [Full Documentation](https://github.com/ntts9990/ragtrace-lite/wiki)
-- **Email**: ntts9990@naver.com
+- **Email**: ntts9990@gmail.com
 
 ## Acknowledgments
 
