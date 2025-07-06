@@ -60,14 +60,12 @@ class HCXRAGASAdapter:
         enhancements = {
             "faithfulness": """
 
-다음 JSON 형식으로만 응답하세요. 절대 다른 설명이나 텍스트를 추가하지 마세요.
-오직 JSON만 출력하세요:
-
+아래 JSON 형식으로만 응답하세요. 설명 없이 JSON만 작성하세요.
 {
-  "statements": ["문장1", "문장2", "문장3"]
+  "statements": ["추출된 문장 1", "추출된 문장 2", "추출된 문장 3"]
 }
 
-위 형식의 JSON만:""",
+JSON 시작:""",
             
             "answer_relevancy": """
 

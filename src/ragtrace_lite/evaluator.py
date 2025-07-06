@@ -340,10 +340,34 @@ class RagasEvaluator:
             print("✅ 평가 완료!")
             
             # 결과를 pandas DataFrame으로 변환
-            results_df = result.to_pandas()
+            try:
+                results_df = result.to_pandas()
+            except Exception as e:
+                print(f"⚠️ DataFrame 변환 중 오류: {e}")
+                # 수동으로 DataFrame 생성
+                results_dict = {}
+                if hasattr(result, 'scores'):
+                    for key, value in result.scores.items():
+                        results_dict[key] = value
+                
+                results_df = pd.DataFrame(results_dict)
+            
+            # 디버깅: 결과 데이터 타입 확인
+            print("\n📊 결과 데이터 타입:")
+            for col in results_df.columns:
+                print(f"  - {col}: {results_df[col].dtype}")
+                # 문자열 컬럼 확인
+                if results_df[col].dtype == 'object':
+                    print(f"    샘플: {results_df[col].head(2).tolist()}")
             
             # 결과 요약 출력
-            self._print_evaluation_summary(results_df)
+            try:
+                self._print_evaluation_summary(results_df)
+            except Exception as e:
+                print(f"⚠️ 결과 요약 출력 중 오류: {e}")
+                # 기본 정보만 출력
+                print("\n📈 평가 결과 (원시 데이터):")
+                print(results_df.head())
             
             return results_df
             
@@ -394,22 +418,55 @@ class RagasEvaluator:
         
         # 각 메트릭별 평균 점수
         for metric_name in evaluated_metrics:
-            scores = results_df[metric_name].dropna()
-            if len(scores) > 0:
-                avg_score = scores.mean()
-                min_score = scores.min()
-                max_score = scores.max()
+            try:
+                # 숫자가 아닌 값 제외하고 numeric 타입으로 변환
+                scores = pd.to_numeric(results_df[metric_name], errors='coerce').dropna()
                 
-                print(f"{metric_name:20}: {avg_score:.4f} (범위: {min_score:.4f}-{max_score:.4f})")
-            else:
-                print(f"{metric_name:20}: 데이터 없음")
+                if len(scores) > 0:
+                    avg_score = scores.mean()
+                    min_score = scores.min()
+                    max_score = scores.max()
+                    
+                    # NaN 체크
+                    if pd.isna(avg_score):
+                        print(f"{metric_name:20}: 계산 불가 (유효한 점수 없음)")
+                    else:
+                        print(f"{metric_name:20}: {avg_score:.4f} (범위: {min_score:.4f}-{max_score:.4f})")
+                else:
+                    print(f"{metric_name:20}: 데이터 없음")
+            except Exception as e:
+                print(f"{metric_name:20}: 오류 발생 ({str(e)})")
         
         # 전체 평균 (RAGAS Score)
         if evaluated_metrics:
-            overall_scores = results_df[evaluated_metrics].mean(axis=1)
-            overall_avg = overall_scores.mean()
-            print(f"{'='*50}")
-            print(f"{'전체 평균 (RAGAS Score)':20}: {overall_avg:.4f}")
+            try:
+                # 각 메트릭을 numeric으로 변환
+                numeric_df = pd.DataFrame()
+                valid_metrics = []
+                
+                for metric in evaluated_metrics:
+                    numeric_col = pd.to_numeric(results_df[metric], errors='coerce')
+                    if numeric_col.notna().any():  # 최소 하나의 유효한 값이 있으면
+                        numeric_df[metric] = numeric_col
+                        valid_metrics.append(metric)
+                
+                if valid_metrics:
+                    # 각 행의 평균 계산 (NaN 제외)
+                    overall_scores = numeric_df[valid_metrics].mean(axis=1, skipna=True)
+                    overall_avg = overall_scores.mean(skipna=True)
+                    
+                    if not pd.isna(overall_avg):
+                        print(f"{'='*50}")
+                        print(f"{'전체 평균 (RAGAS Score)':20}: {overall_avg:.4f}")
+                    else:
+                        print(f"{'='*50}")
+                        print(f"{'전체 평균 (RAGAS Score)':20}: 계산 불가")
+                else:
+                    print(f"{'='*50}")
+                    print(f"{'전체 평균 (RAGAS Score)':20}: 유효한 메트릭 없음")
+            except Exception as e:
+                print(f"{'='*50}")
+                print(f"{'전체 평균 (RAGAS Score)':20}: 오류 ({str(e)})")
         
         print(f"{'='*50}")
     

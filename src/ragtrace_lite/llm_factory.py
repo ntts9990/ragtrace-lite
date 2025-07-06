@@ -131,7 +131,7 @@ class HcxAdapter:
     
     # 클래스 변수로 마지막 요청 시간 저장
     _last_request_time = 0
-    _min_request_interval = 10.0  # 최소 10초 간격 (HCX API 제한 대응)
+    _min_request_interval = 12.0  # 최소 12초 간격 (HCX API 제한 대응, 여유있게 설정)
     
     def __init__(self, api_key: str, model_name: str = "HCX-005"):
         # API 키 검증 및 정리
@@ -223,6 +223,14 @@ class HcxAdapter:
                                 if content:
                                     # RAGAS 호환성을 위한 응답 후처리
                                     cleaned_content = self._clean_response_for_ragas(content)
+                                    
+                                    # JSON 응답이 아니면 메트릭에 맞게 변환
+                                    if hasattr(self, '_last_metric_type') and self._last_metric_type:
+                                        if not cleaned_content.strip().startswith('{'):
+                                            from .hcx_ragas_adapter import HCXRAGASAdapter
+                                            parsed = HCXRAGASAdapter.parse_hcx_response(cleaned_content, self._last_metric_type)
+                                            return json.dumps(parsed, ensure_ascii=False)
+                                    
                                     return cleaned_content
                                 else:
                                     return "HCX API에서 빈 응답을 받았습니다."
