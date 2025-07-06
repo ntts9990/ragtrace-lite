@@ -4,171 +4,177 @@
 
 # RAGTrace Lite
 
-경량화된 RAG (Retrieval-Augmented Generation) 평가 프레임워크
+A lightweight RAG (Retrieval-Augmented Generation) evaluation framework with Korean language support
+
+> 한국어 버전: [README_KO.md](README_KO.md)
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-APACHE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-## 개요
+## Overview
 
-RAGTrace Lite는 RAG 시스템의 성능을 평가하기 위한 경량화된 프레임워크입니다. 
-[RAGAS](https://github.com/explodinggradients/ragas) 프레임워크를 기반으로 하며, 
-한국어 환경에 최적화되어 있습니다.
+RAGTrace Lite is a lightweight framework for evaluating RAG system performance. 
+Built on the [RAGAS](https://github.com/explodinggradients/ragas) framework and optimized for Korean language environments.
 
-## 🚀 빠른 시작
+**Key Features:**
+- **Intelligent Metric Selection**: Automatically selects 5 or 4 metrics based on ground truth data availability
+- **Local BGE-M3 Embeddings**: Offline embedding support for air-gapped environments  
+- **Multi-LLM Support**: HCX-005 (Naver CLOVA Studio) and Gemini (Google)
+- **Offline Deployment**: Complete air-gapped deployment for closed networks
+- **Korean Language Optimized**: Native Korean language support
 
-### 📦 PyPI에서 설치 (권장)
+## Quick Start
+
+### Installation from PyPI (Recommended)
 
 ```bash
-# 기본 설치
+# Basic installation
 pip install ragtrace-lite
 
-# 전체 기능 설치 (LLM + 임베딩 + 향상된 기능)
+# Full installation (LLM + Embeddings + Enhanced features)
 pip install "ragtrace-lite[all]"
 
-# 선택적 설치
-pip install "ragtrace-lite[llm]"        # LLM 지원만
-pip install "ragtrace-lite[embeddings]" # 로컬 임베딩만
+# Optional installations
+pip install "ragtrace-lite[llm]"        # LLM support only
+pip install "ragtrace-lite[embeddings]" # Local embeddings only
 ```
 
-### 🔧 개발자용 설치
+### Development Installation
 
 ```bash
-# 저장소 클론 및 개발 모드 설치
+# Clone repository and install in development mode
 git clone https://github.com/ntts9990/ragtrace-lite.git
 cd ragtrace-lite
 
-# uv 사용 (권장)
+# Using uv (recommended)
 uv sync
 
-# 또는 pip 사용
+# Or using pip
 pip install -e .[all]
 ```
 
-### 2. API 키 설정
-`.env` 파일을 생성하고 API 키를 입력:
+### API Key Configuration
+Create a `.env` file and add your API keys:
 ```env
 CLOVA_STUDIO_API_KEY=nv-your-hcx-api-key
 GOOGLE_API_KEY=your-gemini-api-key
 ```
 
-### 3. 샘플 평가 실행
+### Run Sample Evaluation
 ```bash
-# BGE-M3 + HCX로 평가 실행
+# Run evaluation with BGE-M3 + HCX
 ragtrace-lite evaluate data/sample_data.json --llm hcx
 
-# 웹 대시보드 생성
+# Generate web dashboard
 ragtrace-lite dashboard --open
 ```
 
-## 💻 플랫폼 지원
+## Platform Support
 
-- ✅ **Windows** 10+ (PowerShell/CMD)
-- ✅ **macOS** 10.15+ (Intel/Apple Silicon)  
-- ✅ **Linux** Ubuntu 18.04+
-- ✅ **Python** 3.9, 3.10, 3.11, 3.12
+- **Windows** 10+ (PowerShell/CMD)
+- **macOS** 10.15+ (Intel/Apple Silicon)  
+- **Linux** Ubuntu 18.04+
+- **Python** 3.9, 3.10, 3.11, 3.12
 
-**GPU 지원**: CUDA (Linux), MPS (Apple Silicon), CPU (모든 플랫폼)
+**GPU Support**: CUDA (Linux), MPS (Apple Silicon), CPU (All platforms)
 
-> 📖 **상세 설치 가이드**: [SETUP.md](SETUP.md) 참조
+> **Detailed Setup Guide**: [SETUP.md](SETUP.md)
 
-## 🔒 폐쇄망 배포
+## Offline Deployment
 
-RAGTrace Lite는 **인터넷이 차단된 폐쇄망 환경**에서도 완전한 오프라인 실행을 지원합니다.
+RAGTrace Lite supports complete offline execution in air-gapped environments.
 
-### 빠른 폐쇄망 배포
+### Quick Offline Deployment
 
 ```bash
-# 1. 배포 패키지 생성 (인터넷 연결 환경)
+# 1. Create deployment package (internet-connected environment)
 python scripts/prepare_offline_deployment.py
 
-# 2. 생성된 ZIP 파일을 폐쇄망 PC로 복사
+# 2. Copy generated ZIP file to air-gapped PC
 # dist/ragtrace-lite-offline-YYYYMMDD-HHMMSS.zip
 
-# 3. 폐쇄망에서 압축 해제 후 설치
+# 3. Extract and install in air-gapped environment
 scripts/install.bat
 
-# 4. 평가 실행
+# 4. Run evaluation
 scripts/run_evaluation.bat
 ```
 
-### 폐쇄망 지원 기능
+### Offline Support Features
 
-- 🐍 **Python 3.11 자동 설치**: Windows 설치 파일 포함
-- 🤖 **BGE-M3 로컬 모델**: 2.3GB 임베딩 모델 사전 다운로드
-- 📦 **모든 의존성 포함**: wheel 파일로 완전 오프라인 설치
-- 🔧 **자동 설치 스크립트**: Windows 배치 파일로 원클릭 설치
-- 📚 **완전한 수동 가이드**: 스크립트 실패 시 수동 설치 지원
+- **Python 3.11 Auto-Install**: Windows installer included
+- **BGE-M3 Local Model**: 2.3GB embedding model pre-downloaded
+- **All Dependencies Included**: Complete offline installation with wheel files
+- **Automated Install Scripts**: One-click installation with Windows batch files
+- **Complete Manual Guide**: Manual installation support when scripts fail
 
-### 폐쇄망 요구사항
+### Air-gapped Requirements
 
 - **OS**: Windows 10+ (64bit)
-- **CPU**: x86_64 아키텍처
-- **메모리**: 최소 4GB RAM (BGE-M3 로딩용)
-- **저장공간**: 최소 5GB (Python + 모델 + 의존성)
-- **LLM**: HCX-005 API (폐쇄망 내부 호스트)
+- **CPU**: x86_64 architecture
+- **Memory**: Minimum 4GB RAM (for BGE-M3 loading)
+- **Storage**: Minimum 5GB (Python + model + dependencies)
+- **LLM**: HCX-005 API (internal network host)
 
-> 📖 **폐쇄망 배포 가이드**: [OFFLINE_DEPLOYMENT.md](OFFLINE_DEPLOYMENT.md)  
-> 🛠️ **수동 설치 가이드**: [MANUAL_INSTALLATION_GUIDE.md](MANUAL_INSTALLATION_GUIDE.md)
+> **Offline Deployment Guide**: [OFFLINE_DEPLOYMENT.md](OFFLINE_DEPLOYMENT.md)  
+> **Manual Installation Guide**: [MANUAL_INSTALLATION_GUIDE.md](MANUAL_INSTALLATION_GUIDE.md)
 
-## 주요 특징
+## Key Features
 
-- 🚀 **빠른 설치 및 실행**: 최소 의존성으로 빠르게 시작
-- 🤖 **다중 LLM 지원**: HCX-005 (Naver) & Gemini (Google)
-- 🌐 **로컬 임베딩**: BGE-M3를 통한 오프라인 임베딩 지원
-- 📊 **지능형 메트릭 선택**: Ground Truth 데이터 유무에 따라 자동으로 5개 또는 4개 메트릭 적용
-- 🔒 **완전한 폐쇄망 지원**: 인터넷 차단 환경에서도 완전 오프라인 실행
-- 💾 **데이터 저장**: SQLite 기반 평가 결과 저장 및 이력 관리
-- 📈 **향상된 보고서**: JSON, CSV, Markdown, Elasticsearch NDJSON 형식 지원
-- 🔐 **보안**: 환경 변수 기반 API 키 관리
+- **Fast Installation & Execution**: Quick start with minimal dependencies
+- **Multi-LLM Support**: HCX-005 (Naver CLOVA Studio) & Gemini (Google)
+- **Local Embeddings**: Offline embedding support via BGE-M3
+- **Intelligent Metric Selection**: Automatically selects 5 or 4 metrics based on ground truth availability
+- **Complete Offline Support**: Full air-gapped execution for closed networks
+- **Data Storage**: SQLite-based evaluation result storage and history management
+- **Enhanced Reports**: JSON, CSV, Markdown, Elasticsearch NDJSON format support
+- **Security**: Environment variable-based API key management
 
-## 라이선스
+## License
 
-이 프로젝트는 **듀얼 라이선스**로 제공됩니다:
+This project is provided under **Apache License 2.0**:
 
-- **MIT 라이선스**: [LICENSE-MIT](LICENSE-MIT)
 - **Apache License 2.0**: [LICENSE-APACHE](LICENSE-APACHE)
 
-사용자는 두 라이선스 중 하나를 선택하여 사용할 수 있습니다.
-자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+See the [LICENSE](LICENSE) file for details.
 
-## 📚 설치 및 사용법
+## Usage
 
-### CLI 명령어
+### CLI Commands
 
 ```bash
-# 평가 실행
+# Run evaluation
 ragtrace-lite evaluate data.json --llm hcx
 
-# 데이터셋 목록 확인
+# List available datasets
 ragtrace-lite list-datasets
 
-# 웹 대시보드 생성
+# Generate web dashboard
 ragtrace-lite dashboard --open
 
-# 버전 확인
+# Check version
 ragtrace-lite version
 ```
 
-### Python API 사용
+### Python API
 
 ```python
 from ragtrace_lite import RAGTraceEvaluator
 from ragtrace_lite.config_loader import ConfigLoader
 
-# 설정 로드
+# Load configuration
 config = ConfigLoader.load_config()
 
-# 평가기 초기화
+# Initialize evaluator
 evaluator = RAGTraceEvaluator(config)
 
-# 평가 실행
+# Run evaluation
 results = evaluator.evaluate("your_data.json")
 ```
 
-### 환경 설정
+### Environment Configuration
 
-`.env` 파일을 생성하여 API 키를 설정하세요:
+Create a `.env` file and set your API keys:
 
 ```bash
 # HCX-005 (Naver CLOVA Studio)
