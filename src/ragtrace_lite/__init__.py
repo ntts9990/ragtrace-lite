@@ -13,7 +13,7 @@ You may obtain a copy of the License at
 This file has been modified from the original version in the RAGTrace project.
 """
 
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 __author__ = "RAGTrace Lite Contributors"
 __email__ = "ntts9990@gmail.com"
 __license__ = "Apache-2.0"

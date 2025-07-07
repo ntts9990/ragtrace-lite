@@ -189,7 +189,7 @@ class ReportGenerator:
         ]
         
         # 상위/하위 성능 항목 분석
-        if not results_df.empty:
+        if len(results_df) > 0:
             # 전체 점수 계산 (메트릭 평균)
             metric_columns = [col for col in results_df.columns 
                             if col not in ['question', 'answer', 'contexts', 'ground_truths', 'reference']]

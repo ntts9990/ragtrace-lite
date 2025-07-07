@@ -115,3 +115,16 @@ offline-deployment/
 
 # Project-specific documentation
 CLAUDE.md
+
+# Development test files
+test_*.py
+test_install/
+test_evaluation/
+evaluation_log.txt
+test_results_detail.csv
+
+# Local results
+results/
+
+# Build artifacts
+uv.lock

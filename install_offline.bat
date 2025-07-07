@@ -43,7 +43,7 @@ REM 패키지 설치
 echo.
 echo RAGTrace Lite 설치 중...
 echo 이 작업은 몇 분 정도 걸릴 수 있습니다...
-pip install --no-index --find-links packages\ ragtrace-lite[all]==1.0.4
+pip install --no-index --find-links packages\ ragtrace-lite[all]
 
 REM 설치 확인
 ragtrace-lite version >nul 2>&1

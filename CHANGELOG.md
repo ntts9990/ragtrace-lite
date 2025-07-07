@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.6] - 2025-01-07
+## [1.0.7] - 2025-07-08
+
+### Fixed
+- Fixed pandas DataFrame.empty ambiguous truth value error on Windows
+- Updated main.py to use len() instead of .empty for DataFrame checks
+
+### Added
+- Comprehensive DEVELOPMENT_GUIDE.md for contributors
+- Detailed instructions for LLM and embedding model replacement
+- Error pattern analysis and solutions
+
+### Changed
+- Updated .gitignore to exclude development test files
+- Improved project structure for open source release
+
+## [1.0.6] - 2025-07-07
 
 ### Fixed
 - Enhanced None value handling in report_generator.py with explicit float conversions
@@ -15,40 +30,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added pandas notna() checks for DataFrame values in performance analysis
 - Improved robustness of metric score formatting throughout report generation
 
-## [1.0.5] - 2025-01-07
+## [1.0.5] - 2025-07-07
 
 ### Fixed
 - Fixed TypeError in report_generator.py when metric statistics contain None values
 - Added proper None value handling in metric score formatting
 - Fixed Windows compatibility issue with report generation
 
-## [1.0.4] - 2025-01-06
+## [1.0.4] - 2025-07-07
 
 ### Changed
 - Version bump to 1.0.4
 - Updated all version references across the codebase
 
-## [1.0.3] - 2025-01-06
+## [1.0.3] - 2025-07-07
 
 ### Fixed
 - CLI version command now shows correct version
 - Updated license display to show only Apache-2.0
 - Fixed GitHub repository URL in version command
 
-## [1.0.2] - 2025-01-06
+## [1.0.2] - 2025-07-07
 
 ### Changed
 - Removed MIT license, now using only Apache-2.0
 - Updated offline deployment documentation for Windows
 - Enhanced project description
 
-## [1.0.1] - 2025-01-06
+## [1.0.1] - 2025-07-07
 
 ### Changed
 - English README translation
 - Updated PyPI package metadata
 
-## [1.0.0] - 2025-01-06
+## [1.0.0] - 2025-07-07
 
 ### Added
 - 🚀 Initial release as independent package

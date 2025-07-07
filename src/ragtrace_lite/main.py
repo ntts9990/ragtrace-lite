@@ -150,7 +150,7 @@ class RAGTraceLite:
             
             results_df = self.evaluator.evaluate(dataset)
             
-            if results_df is None or results_df.empty:
+            if results_df is None or len(results_df) == 0:
                 print("❌ 평가 결과가 없습니다")
                 return False
             

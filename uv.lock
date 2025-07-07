@@ -2898,7 +2898,7 @@ wheels = [
 
 [[package]]
 name = "ragtrace-lite"
-version = "1.0.1"
+version = "1.0.6"
 source = { editable = "." }
 dependencies = [
     { name = "datasets" },
