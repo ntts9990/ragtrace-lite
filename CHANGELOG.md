@@ -100,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure database file permissions
 - HTTPS-only API communications
 
-## [0.2.0] - 2024-12-30 (Pre-release)
+## [0.2.0] - 2025-07-06 (Pre-release)
 
 ### Added
 - Enhanced database manager with 6 specialized tables
@@ -113,7 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Database schema for better data organization
 - Report generation with more detailed insights
 
-## [0.1.0] - 2024-12-15 (Pre-release)
+## [0.1.0] - 2025-07-05 (Pre-release)
 
 ### Added
 - Basic RAG evaluation functionality
