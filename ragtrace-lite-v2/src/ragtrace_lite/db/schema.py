@@ -1,6 +1,6 @@
 """Database schema definitions"""
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # SQL statements for table creation
 SCHEMAS = {
@@ -17,6 +17,11 @@ SCHEMAS = {
             config_data TEXT,
             environment_json TEXT,
             ragas_score REAL,
+            faithfulness REAL,
+            answer_relevancy REAL,
+            context_precision REAL,
+            context_recall REAL,
+            answer_correctness REAL,
             status TEXT DEFAULT 'running',
             error_message TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP

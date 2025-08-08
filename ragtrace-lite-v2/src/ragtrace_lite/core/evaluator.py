@@ -49,25 +49,11 @@ class Evaluator:
         self.metrics = []
     
     def _get_default_config(self) -> Dict:
-        """기본 LLM 설정"""
-        provider = os.getenv("LLM_PROVIDER", "hcx")
+        """기본 LLM 설정 - ConfigLoader 사용"""
+        from ..config.config_loader import get_config
         
-        if provider == "hcx":
-            return {
-                "provider": "hcx",
-                "api_key": os.getenv("CLOVA_STUDIO_API_KEY"),
-                "model_name": "HCX-005",
-                "temperature": 0.1
-            }
-        elif provider == "gemini":
-            return {
-                "provider": "gemini",
-                "api_key": os.getenv("GEMINI_API_KEY"),
-                "model_name": "gemini-2.5-flash-lite",
-                "temperature": 0.1
-            }
-        else:
-            raise ValueError(f"Unknown provider: {provider}")
+        config_loader = get_config()
+        return config_loader.get_llm_config()
     
     def evaluate(
         self,

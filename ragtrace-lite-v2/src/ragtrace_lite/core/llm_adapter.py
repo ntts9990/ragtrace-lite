@@ -11,6 +11,8 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 import logging
 from pathlib import Path
 
+from .rate_limiter import get_rate_limiter
+
 # .env 파일 자동 로드
 try:
     from dotenv import load_dotenv
@@ -44,7 +46,15 @@ class LLMAdapter(LLM):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._setup_provider()
-        self._current_delay = self.rate_limit_delay  # 초기화
+        self._current_delay = self.rate_limit_delay  # 초기화 (deprecated, will be removed)
+        
+        # Initialize rate limiter
+        rate_limit_config = {
+            'requests_per_second': 1.0 / self.rate_limit_delay,
+            'backoff_factor': 2.0,
+            'max_backoff': 60.0
+        }
+        self.rate_limiter = get_rate_limiter(self.provider, rate_limit_config)
     
     def _setup_provider(self):
         """프로바이더별 설정"""
@@ -71,15 +81,18 @@ class LLMAdapter(LLM):
     ) -> str:
         """LLM API 호출 - Adaptive Rate Limiting"""
         
-        # Rate limiting (현재 지연 시간 사용)
-        time.sleep(self._current_delay)
-        
         # 프롬프트 강화 (RAGAS 형식)
         enhanced_prompt = self._enhance_prompt(prompt)
         
         # 최대 5번 재시도
         for attempt in range(5):
             try:
+                # 새로운 레이트 리미터 사용 (성공 시에만 대기 없음)
+                wait_time = self.rate_limiter.acquire_sync()
+                if wait_time > 0:
+                    logger.debug(f"Rate limiter applied {wait_time:.2f}s delay")
+                
+                # API 호출
                 if self.provider == "hcx":
                     response = self._call_hcx(enhanced_prompt, stop)
                 elif self.provider == "gemini":
@@ -87,36 +100,36 @@ class LLMAdapter(LLM):
                 else:
                     response = ""
                 
-                # 성공 시 지연 시간 점진적 감소 (최소 5초)
-                if self._current_delay > self.rate_limit_delay:
-                    self._current_delay = max(self.rate_limit_delay, self._current_delay - 2.0)
-                    logger.debug(f"Rate limit delay decreased to {self._current_delay}s")
-                
+                # 성공 기록
+                self.rate_limiter.record_request_result(success=True)
                 return response
                 
             except Exception as e:
                 error_msg = str(e).lower()
+                is_rate_limit = any(keyword in error_msg for keyword in 
+                                   ['429', 'rate', 'too many', 'quota', 'limit'])
                 
-                # Rate limit 에러 감지
-                if '429' in error_msg or 'rate' in error_msg or 'too many' in error_msg:
-                    # 지연 시간 5초씩 증가
-                    self._current_delay += 5.0
-                    logger.warning(f"Rate limit hit. Increasing delay to {self._current_delay}s")
-                    
-                    if attempt < 4:
-                        logger.info(f"Waiting {self._current_delay}s before retry...")
-                        time.sleep(self._current_delay)
-                        continue
+                # 실패 기록
+                self.rate_limiter.record_request_result(success=False, is_rate_limit=is_rate_limit)
+                
+                if is_rate_limit:
+                    logger.warning(f"Rate limit hit on attempt {attempt + 1}: {e}")
                 else:
-                    # 다른 에러의 경우 기본 재시도
                     logger.warning(f"Attempt {attempt + 1} failed: {e}")
-                    if attempt < 4:
-                        time.sleep(self._current_delay)
-                        continue
                 
+                # 마지막 시도가 아니면 계속
+                if attempt < 4:
+                    continue
+                    
                 # 마지막 시도 실패 시 폴백
-                if attempt == 4:
-                    return self._get_fallback_response(prompt)
+                logger.error(f"All {attempt + 1} attempts failed for {self.provider}. Using fallback.")
+                return self._get_fallback_response(prompt)
+        
+        return self._get_fallback_response(prompt)
+    
+    def get_rate_limit_stats(self) -> Dict[str, Any]:
+        """Get rate limiter statistics"""
+        return self.rate_limiter.get_stats()
     
     def _call_hcx(self, prompt: str, stop: Optional[List[str]] = None) -> str:
         """HCX v3 API 호출"""
@@ -373,15 +386,12 @@ Use double quotes only.'''
         provider = config.get("provider", "hcx")
         
         # provider별 환경 변수명 매핑
-        env_key_map = {
-            "hcx": "CLOVA_STUDIO_API_KEY",
-            "gemini": "GEMINI_API_KEY"
-        }
-        
-        api_key = config.get("api_key") or os.getenv(env_key_map.get(provider, f"{provider.upper()}_API_KEY"))
+        api_key = config.get("api_key")
         
         if not api_key:
-            raise ValueError(f"API key not found for {provider}")
+            # ConfigLoader should have provided the API key from environment
+            logger.warning(f"No API key provided for {provider} - please check configuration")
+            raise ValueError(f"API key not found for {provider}. Please set {provider.upper()}_API_KEY environment variable or configure in config.yaml")
         
         # 기본 모델명 설정
         default_models = {

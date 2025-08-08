@@ -3,13 +3,25 @@
 import sqlite3
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
 import logging
 from contextlib import contextmanager
 import numpy as np
 
 from .schema import SCHEMAS, INDEXES, SCHEMA_VERSION
+from .migrations import migrate_database
+
+# Import Pydantic models
+try:
+    from ..models.evaluation import (
+        EvaluationResult, EvaluationMetrics, EvaluationItem, 
+        EvaluationConfig, EvaluationEnvironment, EvaluationStatus
+    )
+    PYDANTIC_AVAILABLE = True
+except ImportError:
+    PYDANTIC_AVAILABLE = False
+    logger.warning("Pydantic models not available, using legacy dict-based approach")
 
 logger = logging.getLogger(__name__)
 
@@ -47,23 +59,30 @@ class DatabaseManager:
             conn.close()
     
     def _init_database(self):
-        """데이터베이스 스키마 초기화"""
+        """데이터베이스 스키마 초기화 및 마이그레이션"""
+        # 마이그레이션 먼저 실행 (기존 테이블 업데이트)
+        migrate_database(self.db_path)
+        
         with self.get_connection() as conn:
-            # 테이블 생성
+            # 테이블 생성 (IF NOT EXISTS이므로 안전)
             for table_name, schema_sql in SCHEMAS.items():
-                conn.execute(schema_sql)
+                try:
+                    conn.execute(schema_sql)
+                except sqlite3.OperationalError as e:
+                    logger.warning(f"Table {table_name} creation issue (likely already exists): {e}")
             
-            # 인덱스 생성
+            # 인덱스 생성 (IF NOT EXISTS이므로 안전)
             for index_sql in INDEXES:
-                conn.execute(index_sql)
-            
-            # 스키마 버전 기록
-            conn.execute(
-                "INSERT OR IGNORE INTO schema_version (version) VALUES (?)",
-                (SCHEMA_VERSION,)
-            )
-            
-            logger.info(f"Database initialized at {self.db_path}")
+                try:
+                    conn.execute(index_sql)
+                except sqlite3.OperationalError as e:
+                    # 컬럼이 없는 경우 인덱스 생성을 건너뜁니다
+                    if "no such column" in str(e):
+                        logger.warning(f"Skipping index creation due to missing column: {e}")
+                    else:
+                        logger.warning(f"Index creation issue: {e}")
+        
+        logger.info(f"Database initialized at {self.db_path}")
     
     def save_evaluation(
         self,
@@ -87,8 +106,10 @@ class DatabaseManager:
                     INSERT INTO evaluations (
                         run_id, timestamp, llm, dataset_name, dataset_hash,
                         dataset_items, total_items, metrics, config_data,
-                        environment_json, ragas_score, status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        environment_json, ragas_score, faithfulness, 
+                        answer_relevancy, context_precision, context_recall, 
+                        answer_correctness, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     run_id,
                     datetime.now().isoformat(),
@@ -101,6 +122,11 @@ class DatabaseManager:
                     json.dumps(config or {}, ensure_ascii=False),
                     json.dumps(environment, ensure_ascii=False),
                     ragas_score,
+                    metrics.get('faithfulness'),
+                    metrics.get('answer_relevancy'),
+                    metrics.get('context_precision'),
+                    metrics.get('context_recall'),
+                    metrics.get('answer_correctness'),
                     'completed'
                 ))
                 
@@ -300,3 +326,205 @@ class DatabaseManager:
             
             cursor = conn.execute(query, (limit,))
             return [dict(row) for row in cursor.fetchall()]
+    
+    # ============ Pydantic Model Support Methods ============
+    
+    def save_evaluation_model(self, evaluation: 'EvaluationResult') -> bool:
+        """Save evaluation using Pydantic model (type-safe)"""
+        if not PYDANTIC_AVAILABLE:
+            logger.warning("Pydantic not available, falling back to legacy save_evaluation")
+            return self.save_evaluation(
+                run_id=evaluation.run_id,
+                dataset_name=evaluation.dataset_name,
+                dataset_hash=evaluation.dataset_hash,
+                dataset_items=evaluation.dataset_items,
+                environment=evaluation.environment.to_dict(),
+                metrics=evaluation.overall_metrics.to_dict(),
+                details=[self._evaluation_item_to_dict(item) for item in evaluation.items],
+                llm=evaluation.llm,
+                config=evaluation.config.to_dict()
+            )
+        
+        try:
+            with self.get_connection() as conn:
+                # Insert evaluation record
+                db_dict = evaluation.to_database_dict()
+                
+                conn.execute("""
+                    INSERT INTO evaluations (
+                        run_id, timestamp, llm, dataset_name, dataset_hash,
+                        dataset_items, total_items, metrics, config_data,
+                        environment_json, ragas_score, faithfulness, 
+                        answer_relevancy, context_precision, context_recall, 
+                        answer_correctness, status, error_message, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    db_dict['run_id'], db_dict['timestamp'], db_dict['llm'],
+                    db_dict['dataset_name'], db_dict['dataset_hash'],
+                    db_dict['dataset_items'], db_dict['total_items'],
+                    db_dict['metrics'], db_dict['config_data'],
+                    db_dict['environment_json'], db_dict['ragas_score'],
+                    db_dict['faithfulness'], db_dict['answer_relevancy'],
+                    db_dict['context_precision'], db_dict['context_recall'],
+                    db_dict['answer_correctness'], db_dict['status'],
+                    db_dict['error_message'], db_dict['created_at']
+                ))
+                
+                # Insert environment EAV data
+                env_data = evaluation.environment.to_dict()
+                if env_data:
+                    env_records = [
+                        (evaluation.run_id, key, str(value))
+                        for key, value in env_data.items() if value is not None
+                    ]
+                    if env_records:
+                        conn.executemany("""
+                            INSERT INTO evaluation_env (run_id, key, value)
+                            VALUES (?, ?, ?)
+                        """, env_records)
+                
+                # Insert evaluation items
+                if evaluation.items:
+                    self._save_evaluation_items_model(conn, evaluation.run_id, evaluation.items)
+                
+                logger.info(f"Saved evaluation model: {evaluation.run_id}")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Failed to save evaluation model {evaluation.run_id}: {e}")
+            return False
+    
+    def load_evaluation_model(self, run_id: str) -> Optional['EvaluationResult']:
+        """Load evaluation as Pydantic model (type-safe)"""
+        if not PYDANTIC_AVAILABLE:
+            logger.warning("Pydantic not available, cannot load evaluation model")
+            return None
+        
+        try:
+            with self.get_connection() as conn:
+                # Load main evaluation record
+                cursor = conn.execute("""
+                    SELECT * FROM evaluations WHERE run_id = ?
+                """, (run_id,))
+                
+                row = cursor.fetchone()
+                if not row:
+                    return None
+                
+                # Convert row to dict
+                columns = [desc[0] for desc in cursor.description]
+                eval_dict = dict(zip(columns, row))
+                
+                # Create evaluation model
+                evaluation = EvaluationResult.from_database_dict(eval_dict)
+                
+                # Load items
+                items_cursor = conn.execute("""
+                    SELECT * FROM evaluation_items 
+                    WHERE run_id = ? ORDER BY item_index
+                """, (run_id,))
+                
+                items = []
+                for item_row in items_cursor.fetchall():
+                    item_columns = [desc[0] for desc in items_cursor.description]
+                    item_dict = dict(zip(item_columns, item_row))
+                    
+                    # Parse contexts
+                    contexts = item_dict.get('contexts', '[]')
+                    if isinstance(contexts, str):
+                        try:
+                            contexts = json.loads(contexts)
+                        except json.JSONDecodeError:
+                            contexts = [contexts] if contexts else []
+                    
+                    item = EvaluationItem(
+                        item_index=item_dict['item_index'],
+                        question=item_dict['question'] or '',
+                        answer=item_dict['answer'] or '',
+                        contexts=contexts,
+                        ground_truth=item_dict.get('ground_truth'),
+                        metrics=EvaluationMetrics(
+                            faithfulness=item_dict.get('faithfulness', 0.0),
+                            answer_relevancy=item_dict.get('answer_relevancy', 0.0),
+                            context_precision=item_dict.get('context_precision', 0.0),
+                            context_recall=item_dict.get('context_recall', 0.0),
+                            answer_correctness=item_dict.get('answer_correctness', 0.0)
+                        )
+                    )
+                    items.append(item)
+                
+                evaluation.items = items
+                evaluation.total_items = len(items)
+                
+                return evaluation
+                
+        except Exception as e:
+            logger.error(f"Failed to load evaluation model {run_id}: {e}")
+            return None
+    
+    def _save_evaluation_items_model(self, conn, run_id: str, items: List['EvaluationItem']):
+        """Save evaluation items from Pydantic models"""
+        items_data = []
+        for item in items:
+            contexts_json = json.dumps(item.contexts, ensure_ascii=False)
+            
+            items_data.append((
+                run_id,
+                item.item_index,
+                item.question,
+                item.answer,
+                contexts_json,
+                item.ground_truth or '',
+                item.metrics.faithfulness,
+                item.metrics.answer_relevancy,
+                item.metrics.context_precision,
+                item.metrics.context_recall,
+                item.metrics.answer_correctness
+            ))
+        
+        conn.executemany("""
+            INSERT INTO evaluation_items (
+                run_id, item_index, question, answer, contexts, ground_truth,
+                faithfulness, answer_relevancy, context_precision,
+                context_recall, answer_correctness
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, items_data)
+    
+    def _evaluation_item_to_dict(self, item: 'EvaluationItem') -> Dict[str, Any]:
+        """Convert EvaluationItem to dictionary for backward compatibility"""
+        return {
+            'question': item.question,
+            'answer': item.answer,
+            'contexts': item.contexts,
+            'ground_truth': item.ground_truth,
+            'faithfulness': item.metrics.faithfulness,
+            'answer_relevancy': item.metrics.answer_relevancy,
+            'context_precision': item.metrics.context_precision,
+            'context_recall': item.metrics.context_recall,
+            'answer_correctness': item.metrics.answer_correctness
+        }
+    
+    def update_evaluation_status(self, run_id: str, status: Union[str, 'EvaluationStatus'], error_message: Optional[str] = None) -> bool:
+        """Update evaluation status (supports both string and Pydantic enum)"""
+        try:
+            status_str = status.value if PYDANTIC_AVAILABLE and hasattr(status, 'value') else str(status)
+            
+            with self.get_connection() as conn:
+                if error_message:
+                    conn.execute("""
+                        UPDATE evaluations 
+                        SET status = ?, error_message = ? 
+                        WHERE run_id = ?
+                    """, (status_str, error_message, run_id))
+                else:
+                    conn.execute("""
+                        UPDATE evaluations 
+                        SET status = ?
+                        WHERE run_id = ?
+                    """, (status_str, run_id))
+                
+                return conn.total_changes > 0
+                
+        except Exception as e:
+            logger.error(f"Failed to update evaluation status for {run_id}: {e}")
+            return False

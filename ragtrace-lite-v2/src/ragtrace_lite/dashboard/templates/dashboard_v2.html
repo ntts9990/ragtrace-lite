@@ -238,52 +238,202 @@
                     <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
                         <h3 class="text-lg font-semibold mb-4">문항별 상세 분석</h3>
                         
-                        <!-- Questions Table -->
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="border-b bg-gray-50">
-                                        <th class="text-left p-3">번호</th>
-                                        <th class="text-left p-3">질문</th>
-                                        <th class="text-center p-3">종합점수</th>
-                                        <th class="text-center p-3">상태</th>
-                                        <th class="text-center p-3">주요 문제</th>
-                                        <th class="text-center p-3">액션</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="(question, index) in questions" :key="index">
-                                        <tr class="border-b hover:bg-gray-50">
-                                            <td class="p-3" x-text="index + 1"></td>
-                                            <td class="p-3">
-                                                <p class="font-medium truncate max-w-xs" x-text="question.question"></p>
-                                            </td>
-                                            <td class="text-center p-3">
-                                                <span class="font-bold" x-text="(question.overall_score || 0).toFixed(3)"></span>
-                                            </td>
-                                            <td class="text-center p-3">
-                                                <span :class="{
-                                                    'bg-green-100 text-green-800': question.status === 'good',
-                                                    'bg-yellow-100 text-yellow-800': question.status === 'warning',
-                                                    'bg-red-100 text-red-800': question.status === 'poor'
-                                                }" class="px-2 py-1 rounded-full text-xs">
+                        <!-- Questions Expandable List -->
+                        <div class="space-y-2">
+                            <template x-for="(question, index) in questions" :key="index">
+                                <div class="bg-white border rounded-lg shadow-sm">
+                                    <!-- Question Summary Row -->
+                                    <div @click="expandedQuestion = expandedQuestion === index ? -1 : index" 
+                                         class="p-4 cursor-pointer hover:bg-gray-50 transition-colors">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center space-x-4 flex-1">
+                                                <div class="flex items-center">
+                                                    <span class="font-semibold text-gray-700" x-text="'문항 ' + (index + 1)"></span>
+                                                    <svg class="ml-2 w-5 h-5 transition-transform text-gray-400" 
+                                                         :class="expandedQuestion === index ? 'rotate-90' : ''"
+                                                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                                    </svg>
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-sm text-gray-900 truncate" x-text="question.question || question.raw_question || '질문 없음'"></p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center space-x-4">
+                                                <span class="text-sm font-medium text-gray-500">점수:</span>
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                                                    :class="{
+                                                        'bg-green-100 text-green-800': question.overall_score >= 0.8,
+                                                        'bg-yellow-100 text-yellow-800': question.overall_score >= 0.6 && question.overall_score < 0.8,
+                                                        'bg-red-100 text-red-800': question.overall_score < 0.6
+                                                    }"
+                                                    x-text="(question.overall_score || 0).toFixed(3)"></span>
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs"
+                                                    :class="{
+                                                        'bg-green-100 text-green-800': question.status === 'good',
+                                                        'bg-yellow-100 text-yellow-800': question.status === 'warning',
+                                                        'bg-red-100 text-red-800': question.status === 'poor'
+                                                    }">
                                                     <span x-text="getStatusText(question.status)"></span>
                                                 </span>
-                                            </td>
-                                            <td class="p-3 text-sm text-gray-600">
-                                                <span x-text="question.issues?.[0] || '-'"></span>
-                                            </td>
-                                            <td class="text-center p-3">
-                                                <button @click="showQuestionDetail(question)"
-                                                    type="button"
-                                                    class="text-indigo-600 hover:text-indigo-800 text-sm font-medium cursor-pointer">
-                                                    상세보기
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Expanded Details -->
+                                    <div x-show="expandedQuestion === index" 
+                                         x-transition:enter="transition ease-out duration-200"
+                                         x-transition:enter-start="opacity-0 transform scale-95"
+                                         x-transition:enter-end="opacity-100 transform scale-100"
+                                         x-transition:leave="transition ease-in duration-150"
+                                         x-transition:leave-start="opacity-100 transform scale-100"
+                                         x-transition:leave-end="opacity-0 transform scale-95"
+                                         class="border-t bg-gray-50">
+                                        <div class="p-6">
+                                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                <!-- Left Column -->
+                                                <div class="space-y-4">
+                                                    <!-- Full Question -->
+                                                    <div class="bg-blue-50 p-4 rounded-lg">
+                                                        <h4 class="font-semibold text-blue-900 mb-2 flex items-center">
+                                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                            </svg>
+                                                            전체 질문
+                                                        </h4>
+                                                        <p class="text-gray-800 text-sm leading-relaxed" x-text="question.question || question.raw_question || '질문이 없습니다'"></p>
+                                                    </div>
+                                                    
+                                                    <!-- Answer -->
+                                                    <div class="bg-green-50 p-4 rounded-lg">
+                                                        <h4 class="font-semibold text-green-900 mb-2 flex items-center">
+                                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path>
+                                                            </svg>
+                                                            생성된 답변
+                                                        </h4>
+                                                        <div class="max-h-32 overflow-y-auto">
+                                                            <p class="text-gray-800 text-sm leading-relaxed" x-text="question.answer || question.raw_answer || '답변이 없습니다'"></p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Ground Truth -->
+                                                    <div x-show="question.ground_truth" class="bg-purple-50 p-4 rounded-lg">
+                                                        <h4 class="font-semibold text-purple-900 mb-2 flex items-center">
+                                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                            </svg>
+                                                            정답 (Ground Truth)
+                                                        </h4>
+                                                        <p class="text-gray-800 text-sm" x-text="question.ground_truth"></p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Right Column -->
+                                                <div class="space-y-4">
+                                                    <!-- Metrics -->
+                                                    <div class="bg-white p-4 rounded-lg border">
+                                                        <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
+                                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                                            </svg>
+                                                            세부 메트릭
+                                                        </h4>
+                                                        <div class="space-y-2">
+                                                            <template x-for="[metric, score] in Object.entries(question.metrics || {})" :key="metric">
+                                                                <div class="flex justify-between items-center p-2 rounded-lg"
+                                                                    :class="{
+                                                                        'bg-green-50 border border-green-200': score >= 0.8,
+                                                                        'bg-yellow-50 border border-yellow-200': score >= 0.6 && score < 0.8,
+                                                                        'bg-red-50 border border-red-200': score < 0.6
+                                                                    }">
+                                                                    <span class="text-sm font-medium text-gray-700" x-text="metric"></span>
+                                                                    <span class="text-sm font-bold"
+                                                                        :class="{
+                                                                            'text-green-800': score >= 0.8,
+                                                                            'text-yellow-800': score >= 0.6 && score < 0.8,
+                                                                            'text-red-800': score < 0.6
+                                                                        }"
+                                                                        x-text="score.toFixed(3)"></span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Issues & Recommendations -->
+                                                    <div x-show="(question.issues?.length || question.recommendations?.length)" class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                                                        <div x-show="question.issues?.length" class="mb-4">
+                                                            <h4 class="font-semibold text-orange-900 mb-2 flex items-center">
+                                                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                                                </svg>
+                                                                발견된 문제점
+                                                            </h4>
+                                                            <ul class="space-y-1">
+                                                                <template x-for="issue in (question.issues || [])" :key="issue">
+                                                                    <li class="text-sm text-red-700 flex items-start">
+                                                                        <span class="mr-2 mt-1">•</span>
+                                                                        <span x-text="issue"></span>
+                                                                    </li>
+                                                                </template>
+                                                            </ul>
+                                                        </div>
+                                                        
+                                                        <div x-show="question.recommendations?.length">
+                                                            <h4 class="font-semibold text-blue-900 mb-2 flex items-center">
+                                                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                                                </svg>
+                                                                개선 권장사항
+                                                            </h4>
+                                                            <ul class="space-y-1">
+                                                                <template x-for="rec in (question.recommendations || [])" :key="rec">
+                                                                    <li class="text-sm text-blue-700 flex items-start">
+                                                                        <span class="mr-2 mt-1">•</span>
+                                                                        <span x-text="rec"></span>
+                                                                    </li>
+                                                                </template>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- AI Interpretation -->
+                                                    <div x-show="question.interpretation" class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                                        <h4 class="font-semibold text-yellow-900 mb-2 flex items-center">
+                                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                                            </svg>
+                                                            AI 분석 해석
+                                                        </h4>
+                                                        <p class="text-sm text-gray-800 leading-relaxed" x-text="question.interpretation || 'AI 해석이 제공되지 않았습니다'"></p>
+                                                    </div>
+                                                    
+                                                    <!-- Context Information -->
+                                                    <div class="bg-gray-100 p-4 rounded-lg">
+                                                        <h4 class="font-semibold text-gray-900 mb-2 flex items-center">
+                                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253z"></path>
+                                                            </svg>
+                                                            참조 컨텍스트
+                                                        </h4>
+                                                        <div class="space-y-2 max-h-32 overflow-y-auto">
+                                                            <template x-for="(context, ctxIdx) in (question.contexts || question.raw_contexts || [])" :key="ctxIdx">
+                                                                <div class="bg-white p-3 rounded border border-gray-200">
+                                                                    <div class="flex items-center justify-between mb-1">
+                                                                        <span class="text-xs font-medium text-gray-500">Context <span x-text="ctxIdx + 1"></span></span>
+                                                                    </div>
+                                                                    <p class="text-xs text-gray-700 leading-relaxed" x-text="context"></p>
+                                                                </div>
+                                                            </template>
+                                                            <p x-show="!(question.contexts?.length || question.raw_contexts?.length)" class="text-gray-500 text-sm italic">컨텍스트 정보가 제공되지 않았습니다</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                         
                         <!-- Question Metrics Distribution -->
@@ -443,139 +593,6 @@
         </div>
     </div>
     
-    <!-- Question Detail Modal -->
-    <div x-show="showQuestionModal" x-cloak
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-        @click.self="showQuestionModal = false">
-        <div class="bg-white rounded-xl shadow-xl p-6 max-w-5xl w-[90%] max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold">문항 상세 분석</h3>
-                <button @click="showQuestionModal = false" class="text-gray-500 hover:text-gray-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            
-            <div class="space-y-6">
-                <!-- Question Section -->
-                <div class="bg-blue-50 p-4 rounded-lg">
-                    <p class="font-semibold text-blue-900 mb-2">📝 질문</p>
-                    <p class="text-gray-800" x-text="selectedQuestion?.question || selectedQuestion?.raw_question || '데이터 없음'"></p>
-                </div>
-                
-                <!-- Answer Section -->
-                <div class="bg-green-50 p-4 rounded-lg">
-                    <p class="font-semibold text-green-900 mb-2">💬 생성된 답변</p>
-                    <p class="text-gray-800" x-text="selectedQuestion?.answer || selectedQuestion?.raw_answer || '데이터 없음'"></p>
-                </div>
-                
-                <!-- Ground Truth Section (if available) -->
-                <div x-show="selectedQuestion?.ground_truth" class="bg-purple-50 p-4 rounded-lg">
-                    <p class="font-semibold text-purple-900 mb-2">✅ 정답 (Ground Truth)</p>
-                    <p class="text-gray-800" x-text="selectedQuestion?.ground_truth || 'N/A'"></p>
-                </div>
-                
-                <!-- Contexts Section -->
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <p class="font-semibold text-gray-900 mb-2">📚 검색된 컨텍스트</p>
-                    <div class="space-y-2">
-                        <template x-for="(context, idx) in (selectedQuestion?.contexts || selectedQuestion?.raw_contexts || [])" :key="idx">
-                            <div class="bg-white p-3 rounded border border-gray-200">
-                                <span class="text-xs text-gray-500">Context <span x-text="idx + 1"></span>:</span>
-                                <p class="mt-1 text-sm" x-text="context"></p>
-                            </div>
-                        </template>
-                        <p x-show="!(selectedQuestion?.contexts?.length || selectedQuestion?.raw_contexts?.length)" class="text-gray-500 text-sm">
-                            컨텍스트 정보가 없습니다.
-                        </p>
-                    </div>
-                </div>
-                
-                <!-- Metrics Section -->
-                <div>
-                    <p class="font-semibold text-gray-900 mb-3">📊 평가 메트릭</p>
-                    <div class="grid grid-cols-5 gap-3">
-                        <template x-for="[metric, score] in Object.entries(selectedQuestion?.metrics || {})" :key="metric">
-                            <div class="bg-white border rounded-lg p-3 text-center"
-                                :class="{
-                                    'border-green-400 bg-green-50': score >= 0.8,
-                                    'border-yellow-400 bg-yellow-50': score >= 0.6 && score < 0.8,
-                                    'border-red-400 bg-red-50': score < 0.6
-                                }">
-                                <p class="text-xs text-gray-600" x-text="getMetricLabel(metric)"></p>
-                                <p class="text-lg font-bold mt-1" 
-                                   :class="{
-                                       'text-green-700': score >= 0.8,
-                                       'text-yellow-700': score >= 0.6 && score < 0.8,
-                                       'text-red-700': score < 0.6
-                                   }"
-                                   x-text="(score || 0).toFixed(3)"></p>
-                            </div>
-                        </template>
-                    </div>
-                    
-                    <!-- Overall Score -->
-                    <div class="mt-3 text-center p-3 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-lg">
-                        <p class="text-sm text-gray-600">종합 점수</p>
-                        <p class="text-2xl font-bold" 
-                           :class="{
-                               'text-green-600': selectedQuestion?.overall_score >= 0.8,
-                               'text-yellow-600': selectedQuestion?.overall_score >= 0.6 && selectedQuestion?.overall_score < 0.8,
-                               'text-red-600': selectedQuestion?.overall_score < 0.6
-                           }"
-                           x-text="(selectedQuestion?.overall_score || 0).toFixed(3)"></p>
-                        <span class="inline-block mt-1 px-2 py-1 text-xs rounded-full"
-                              :class="{
-                                  'bg-green-200 text-green-800': selectedQuestion?.status === 'good',
-                                  'bg-yellow-200 text-yellow-800': selectedQuestion?.status === 'warning',
-                                  'bg-red-200 text-red-800': selectedQuestion?.status === 'poor'
-                              }"
-                              x-text="selectedQuestion?.status || 'N/A'"></span>
-                    </div>
-                </div>
-                
-                <!-- Issues Section -->
-                <div x-show="selectedQuestion?.issues?.length > 0" class="bg-red-50 p-4 rounded-lg">
-                    <p class="font-semibold text-red-900 mb-2">⚠️ 발견된 문제점</p>
-                    <ul class="space-y-1">
-                        <template x-for="issue in (selectedQuestion?.issues || [])" :key="issue">
-                            <li class="text-sm text-red-700 flex items-start">
-                                <span class="mr-2">•</span>
-                                <span x-text="issue"></span>
-                            </li>
-                        </template>
-                    </ul>
-                </div>
-                
-                <!-- Recommendations Section -->
-                <div x-show="selectedQuestion?.recommendations?.length > 0" class="bg-blue-50 p-4 rounded-lg">
-                    <p class="font-semibold text-blue-900 mb-2">💡 개선 권장사항</p>
-                    <ul class="space-y-1">
-                        <template x-for="rec in (selectedQuestion?.recommendations || [])" :key="rec">
-                            <li class="text-sm text-blue-700 flex items-start">
-                                <span class="mr-2">•</span>
-                                <span x-text="rec"></span>
-                            </li>
-                        </template>
-                    </ul>
-                </div>
-                
-                <!-- Interpretation Section -->
-                <div class="bg-yellow-50 p-4 rounded-lg">
-                    <p class="font-semibold text-yellow-900 mb-2">🔍 종합 해석</p>
-                    <p class="text-sm text-gray-800" x-text="selectedQuestion?.interpretation || '해석 정보가 없습니다.'"></p>
-                </div>
-            </div>
-            
-            <div class="mt-6 flex justify-end">
-                <button @click="showQuestionModal = false"
-                    class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                    닫기
-                </button>
-            </div>
-        </div>
-    </div>
     
     <script>
         function advancedDashboard() {
@@ -588,8 +605,7 @@
                 abSelection: { a: null, b: null },
                 abTestResults: null,
                 searchQuery: '',
-                showQuestionModal: false,
-                selectedQuestion: null,
+                expandedQuestion: -1,
                 commonIssues: [],
                 recommendations: [],
                 charts: {},
@@ -601,9 +617,11 @@
                 
                 async init() {
                     console.log('Initializing dashboard...');
-                    await this.loadReports();
                     
-                    // No need for custom event listener anymore
+                    // Initialize time series on page load
+                    await this.updateTimeSeriesStats();
+                    
+                    await this.loadReports();
                     
                     // Auto-select first report if available
                     if (this.filteredReports.length > 0) {
@@ -635,6 +653,9 @@
                     this.viewMode = mode;
                     if (mode === 'questions' && this.selectedReport) {
                         this.loadQuestions();
+                    } else if (mode === 'overview') {
+                        // Load time series when switching to overview
+                        this.updateTimeSeriesStats();
                     }
                 },
                 
@@ -651,8 +672,7 @@
                         this.selectedReport = { ...this.selectedReport, ...details };
                         console.log('Report loaded with statistics:', this.selectedReport.statistics);
                         
-                        // Load time series stats
-                        await this.updateTimeSeriesStats();
+                        // Time series stats will be loaded on demand when overview mode is viewed
                         
                         this.$nextTick(() => {
                             if (this.viewMode === 'overview') {
