@@ -11,6 +11,8 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 import logging
 from pathlib import Path
 
+import random
+
 from .rate_limiter import get_rate_limiter
 
 logger = logging.getLogger(__name__)
@@ -26,12 +28,12 @@ class LLMAdapter(LLM):
     temperature: float = 0.1
     max_tokens: int = 1000
     rate_limit_delay: float = 5.0  # 초기 5초
-    _current_delay: float = None  # 동적 지연 시간
+    max_retries: int = 5
+    backoff_factor: float = 1.5
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._setup_provider()
-        self._current_delay = self.rate_limit_delay  # 초기화 (deprecated, will be removed)
+        # _setup_provider is called implicitly via from_config
         
         # Initialize rate limiter
         rate_limit_config = {
@@ -42,17 +44,11 @@ class LLMAdapter(LLM):
         self.rate_limiter = get_rate_limiter(self.provider, rate_limit_config)
     
     def _setup_provider(self):
-        """프로바이더별 설정"""
-        if self.provider == "hcx":
-            # HCX v3 API 사용
-            self.api_url = self.api_url or "https://clovastudio.stream.ntruss.com/v3/chat-completions/HCX-005"
-            self.model_name = self.model_name or "HCX-005"
-        elif self.provider == "gemini":
-            # Gemini 2.5 Flash Lite 모델 사용 (최신, 더 빠르고 저렴)
-            self.api_url = self.api_url or "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
-            self.model_name = self.model_name or "gemini-2.5-flash-lite"
-        else:
-            raise ValueError(f"Unsupported provider: {self.provider}")
+        """프로바이더별 설정 - from_config를 통해 주입된 값 사용"""
+        if not self.api_url:
+            raise ValueError("api_url must be provided from config")
+        if not self.model_name:
+            raise ValueError("model_name must be provided from config")
     
     @property
     def _llm_type(self) -> str:
@@ -64,20 +60,16 @@ class LLMAdapter(LLM):
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
     ) -> str:
-        """LLM API 호출 - Adaptive Rate Limiting"""
+        """LLM API 호출 - 지수 백오프 및 지터 적용"""
         
-        # 프롬프트 강화 (RAGAS 형식)
         enhanced_prompt = self._enhance_prompt(prompt)
         
-        # 최대 5번 재시도
-        for attempt in range(5):
+        for attempt in range(self.max_retries):
             try:
-                # 새로운 레이트 리미터 사용 (성공 시에만 대기 없음)
                 wait_time = self.rate_limiter.acquire_sync()
                 if wait_time > 0:
                     logger.debug(f"Rate limiter applied {wait_time:.2f}s delay")
                 
-                # API 호출
                 if self.provider == "hcx":
                     response = self._call_hcx(enhanced_prompt, stop)
                 elif self.provider == "gemini":
@@ -85,7 +77,6 @@ class LLMAdapter(LLM):
                 else:
                     response = ""
                 
-                # 성공 기록
                 self.rate_limiter.record_request_result(success=True)
                 return response
                 
@@ -94,21 +85,21 @@ class LLMAdapter(LLM):
                 is_rate_limit = any(keyword in error_msg for keyword in 
                                    ['429', 'rate', 'too many', 'quota', 'limit'])
                 
-                # 실패 기록
                 self.rate_limiter.record_request_result(success=False, is_rate_limit=is_rate_limit)
                 
-                if is_rate_limit:
-                    logger.warning(f"Rate limit hit on attempt {attempt + 1}: {e}")
-                else:
-                    logger.warning(f"Attempt {attempt + 1} failed: {e}")
-                
-                # 마지막 시도가 아니면 계속
-                if attempt < 4:
-                    continue
+                if attempt < self.max_retries - 1:
+                    backoff_time = self.rate_limit_delay * (self.backoff_factor ** attempt)
+                    jitter = backoff_time * 0.1 * random.uniform(-1, 1)
+                    sleep_time = backoff_time + jitter
                     
-                # 마지막 시도 실패 시 폴백
-                logger.error(f"All {attempt + 1} attempts failed for {self.provider}. Using fallback.")
-                return self._get_fallback_response(prompt)
+                    logger.warning(
+                        f"Attempt {attempt + 1}/{self.max_retries} failed with error: {e}. "
+                        f"Retrying in {sleep_time:.2f} seconds..."
+                    )
+                    time.sleep(sleep_time)
+                else:
+                    logger.error(f"All {self.max_retries} attempts failed for {self.provider}. Using fallback.")
+                    return self._get_fallback_response(prompt)
         
         return self._get_fallback_response(prompt)
     

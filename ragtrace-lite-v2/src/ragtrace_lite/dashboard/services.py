@@ -10,9 +10,6 @@ import json
 from scipy import stats
 import pandas as pd
 
-# Add src path for imports  
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from ragtrace_lite.db.manager import DatabaseManager
 from ragtrace_lite.config.config_loader import get_config
 
@@ -24,8 +21,8 @@ class DashboardService:
     def __init__(self):
         """Initialize service with unified configuration"""
         config = get_config()
-        db_config = config._get_default_config()['database']
-        self.db_manager = DatabaseManager(str(db_config['path']))
+        db_path = config.get("database.path", "ragtrace.db")
+        self.db_manager = DatabaseManager(db_path)
         logger.info(f"DashboardService initialized with DB: {self.db_manager.db_path}")
     
     def get_all_reports(self) -> List[Dict[str, Any]]:
@@ -50,6 +47,25 @@ class DashboardService:
             logger.error(f"Failed to get reports via db_manager: {e}")
             return []
     
+    def get_report_details(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """Get details for a single report."""
+        try:
+            report = self.db_manager.get_run_by_id(run_id)
+            if not report:
+                return None
+            
+            # Format and round values for display
+            for key, value in report.items():
+                if isinstance(value, float):
+                    report[key] = round(value, 3)
+            
+            logger.info(f"Retrieved details for report {run_id}")
+            return report
+
+        except Exception as e:
+            logger.error(f"Failed to get report details for {run_id}: {e}")
+            return None
+
     def get_time_series_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict[str, Any]:
         """Get time series statistics with forecasting"""
         try:

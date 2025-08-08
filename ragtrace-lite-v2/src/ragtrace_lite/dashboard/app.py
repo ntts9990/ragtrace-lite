@@ -9,10 +9,7 @@ from pathlib import Path
 import logging
 import sys
 
-# Add src path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from config.config_loader import get_config
+from ragtrace_lite.config.config_loader import get_config
 from .services import DashboardService
 
 # Setup logging
@@ -55,9 +52,7 @@ def get_reports():
 @app.route('/api/report/<run_id>')
 def get_report(run_id):
     """API endpoint for fetching a single report's details"""
-    # This could be optimized with a dedicated service method
-    reports = dashboard_service.get_all_reports()
-    report = next((r for r in reports if r['run_id'] == run_id), None)
+    report = dashboard_service.get_report_details(run_id)
     if report:
         return jsonify(report)
     return jsonify({'error': 'Report not found'}), 404
@@ -74,7 +69,7 @@ def compare_reports():
 
     # The service layer handles the A/B test logic
     # For simplicity, we compare the first two IDs provided
-    results = dashboard_service.perform_ab_test(run_ids[0], run_ids[1])
+    results = dashboard_service.perform_ab_test([run_ids[0]], run_ids[1:])
     return jsonify(results)
 
 
@@ -109,7 +104,7 @@ def ab_test():
     if not run_id_a or not run_id_b:
         return jsonify({'error': 'Both run_id_a and run_id_b are required'}), 400
 
-    results = dashboard_service.perform_ab_test(run_id_a, run_id_b)
+    results = dashboard_service.perform_ab_test([run_id_a], [run_id_b])
     return jsonify(results)
 
 

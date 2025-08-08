@@ -327,6 +327,20 @@ class DatabaseManager:
             
             cursor = conn.execute(query, (limit,))
             return [dict(row) for row in cursor.fetchall()]
+
+    def get_run_by_id(self, run_id: str) -> Optional[Dict]:
+        """ID로 단일 실행 조회"""
+        with self.get_connection() as conn:
+            query = """
+                SELECT run_id, timestamp, dataset_name, dataset_items, 
+                       ragas_score, status, faithfulness, answer_relevancy,
+                       context_precision, context_recall, answer_correctness
+                FROM evaluations
+                WHERE run_id = ?
+            """
+            cursor = conn.execute(query, (run_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
     
     # ============ Pydantic Model Support Methods ============
     

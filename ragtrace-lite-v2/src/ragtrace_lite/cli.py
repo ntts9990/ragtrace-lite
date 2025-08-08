@@ -148,8 +148,12 @@ def evaluate(ctx, excel, name, output, yes):
                 
                 # 보고서 생성
                 report_gen = ReportGenerator()
-                report_path = report_gen.generate_evaluation_report(
-                    run_id, results, environment, output
+                report_path = report_gen.generate_report(
+                    run_id=run_id,
+                    results=results,
+                    environment=environment,
+                    output_path=output / f"{run_id}_report.html",
+                    dataset_name=excel_path.stem
                 )
                 click.echo(f"\n📄 Report: {report_path}")
             else:
