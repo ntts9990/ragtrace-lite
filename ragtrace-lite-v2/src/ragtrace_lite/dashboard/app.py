@@ -109,7 +109,7 @@ class DashboardService:
             
             # Get environment data
             cursor.execute("""
-                SELECT key, value FROM environments WHERE run_id = ?
+                SELECT key, value FROM evaluation_env WHERE run_id = ?
             """, (run_id,))
             
             env_data = cursor.fetchall()

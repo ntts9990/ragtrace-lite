@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard UI Test</title>
+</head>
+<body>
+    <h1>Dashboard UI Test</h1>
+    <p>Open browser console (F12) and check the following:</p>
+    
+    <h2>1. Test Overview Statistics</h2>
+    <iframe src="http://localhost:8080" width="100%" height="600"></iframe>
+    
+    <script>
+        // Test API directly
+        fetch('http://localhost:8080/api/reports')
+            .then(r => r.json())
+            .then(reports => {
+                console.log('Reports:', reports);
+                if (reports.length > 0) {
+                    const runId = reports[0].run_id;
+                    
+                    // Get report details
+                    fetch(`http://localhost:8080/api/report/${runId}`)
+                        .then(r => r.json())
+                        .then(details => {
+                            console.log('Report Details:', details);
+                            console.log('Statistics:', details.statistics);
+                        });
+                    
+                    // Get questions
+                    fetch(`http://localhost:8080/api/questions/${runId}`)
+                        .then(r => r.json())
+                        .then(questions => {
+                            console.log('Questions:', questions);
+                            console.log('First question:', questions[0]);
+                        });
+                }
+            });
+    </script>
+    
+    <h2>Instructions:</h2>
+    <ol>
+        <li>Open browser console (F12)</li>
+        <li>Check if statistics are loaded</li>
+        <li>Click on a report in the sidebar</li>
+        <li>Switch to "문항분석" tab</li>
+        <li>Click "상세보기" button</li>
+        <li>Check console for any errors</li>
+    </ol>
+</body>
+</html>

@@ -232,8 +232,9 @@
                                                 <span x-text="question.issues?.[0] || '-'"></span>
                                             </td>
                                             <td class="text-center p-3">
-                                                <button @click.stop="showQuestionDetail(question)"
-                                                    class="text-indigo-600 hover:text-indigo-800 text-sm">
+                                                <button @click="showQuestionDetail(question)"
+                                                    type="button"
+                                                    class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
                                                     상세보기
                                                 </button>
                                             </td>
@@ -553,6 +554,10 @@
                 
                 async init() {
                     await this.loadReports();
+                    // Auto-select first report if available
+                    if (this.filteredReports.length > 0) {
+                        await this.selectReport(this.filteredReports[0]);
+                    }
                 },
                 
                 async loadReports() {
@@ -588,8 +593,12 @@
                     // Load detailed data
                     try {
                         const response = await fetch(`/api/report/${report.run_id}`);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
                         const details = await response.json();
                         this.selectedReport = { ...this.selectedReport, ...details };
+                        console.log('Report loaded with statistics:', this.selectedReport.statistics);
                         
                         this.$nextTick(() => {
                             if (this.viewMode === 'overview') {
@@ -600,6 +609,10 @@
                         });
                     } catch (error) {
                         console.error('Failed to load report details:', error);
+                        // If statistics calculation failed, calculate it here
+                        if (this.selectedReport && !this.selectedReport.statistics) {
+                            this.calculateStatistics();
+                        }
                     }
                 },
                 
@@ -691,8 +704,44 @@
                 },
                 
                 showQuestionDetail(question) {
+                    console.log('Showing question detail:', question);
                     this.selectedQuestion = question;
                     this.showQuestionModal = true;
+                    console.log('Modal should be visible now:', this.showQuestionModal);
+                },
+                
+                calculateStatistics() {
+                    // Calculate statistics from available metrics
+                    if (!this.selectedReport) return;
+                    
+                    const metrics = ['faithfulness', 'answer_relevancy', 'context_precision', 
+                                   'context_recall', 'answer_correctness'];
+                    const scores = [];
+                    
+                    for (const metric of metrics) {
+                        const value = this.selectedReport[metric];
+                        if (value !== null && value !== undefined) {
+                            scores.push(value);
+                        }
+                    }
+                    
+                    if (scores.length > 0) {
+                        scores.sort((a, b) => a - b);
+                        const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+                        const std = Math.sqrt(scores.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / scores.length);
+                        
+                        this.selectedReport.statistics = {
+                            mean: mean,
+                            std: std,
+                            min: Math.min(...scores),
+                            max: Math.max(...scores),
+                            median: scores[Math.floor(scores.length / 2)],
+                            q1: scores[Math.floor(scores.length * 0.25)],
+                            q3: scores[Math.floor(scores.length * 0.75)],
+                            cv: std / mean
+                        };
+                        console.log('Calculated statistics:', this.selectedReport.statistics);
+                    }
                 },
                 
                 updateCharts() {
