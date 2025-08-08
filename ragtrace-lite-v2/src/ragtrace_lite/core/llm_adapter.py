@@ -13,21 +13,6 @@ from pathlib import Path
 
 from .rate_limiter import get_rate_limiter
 
-# .env 파일 자동 로드
-try:
-    from dotenv import load_dotenv
-    # 여러 경로 시도
-    for env_path in [
-        Path.cwd() / '.env',  # 현재 작업 디렉토리
-        Path(__file__).parent.parent.parent / '.env',  # 프로젝트 루트
-        Path.home() / '.env'  # 홈 디렉토리
-    ]:
-        if env_path.exists():
-            load_dotenv(env_path, override=True)
-            break
-except ImportError:
-    pass
-
 logger = logging.getLogger(__name__)
 
 

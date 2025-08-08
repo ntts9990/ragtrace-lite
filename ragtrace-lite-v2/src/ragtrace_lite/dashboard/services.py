@@ -53,270 +53,208 @@ class DashboardService:
     def get_time_series_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict[str, Any]:
         """Get time series statistics with forecasting"""
         try:
-            with self.db_manager.get_connection() as conn:
-                cursor = conn.cursor()
-                
-                # Build date filter
-                date_filter = ""
-                params = []
-                if start_date:
-                    date_filter += " AND timestamp >= ?"
-                    params.append(start_date)
-                if end_date:
-                    date_filter += " AND timestamp <= ?"
-                    params.append(end_date)
-                
-                query = f"""
-                    SELECT 
-                        DATE(timestamp) as date,
-                        AVG(ragas_score) as avg_score,
-                        COUNT(*) as count,
-                        AVG(faithfulness) as avg_faithfulness,
-                        AVG(answer_relevancy) as avg_answer_relevancy,
-                        AVG(context_precision) as avg_context_precision,
-                        AVG(context_recall) as avg_context_recall,
-                        AVG(answer_correctness) as avg_answer_correctness
-                    FROM evaluations
-                    WHERE status = 'completed' {date_filter}
-                    GROUP BY DATE(timestamp)
-                    ORDER BY date
-                """
-                
-                cursor.execute(query, params)
-                rows = cursor.fetchall()
-                
-                if not rows:
-                    # Return empty stats if no data
-                    return {
-                        'dates': [],
-                        'scores': [],
-                        'counts': [],
-                        'metrics': {
-                            'faithfulness': [],
-                            'answer_relevancy': [],
-                            'context_precision': [],
-                            'context_recall': [],
-                            'answer_correctness': []
-                        },
-                        'forecast': {
-                            'trend': 0,
-                            'next_score': 0,
-                            'confidence': 0
-                        },
-                        'summary': {
-                            'total_evaluations': 0,
-                            'avg_score': 0,
-                            'trend_direction': 'stable'
-                        }
-                    }
-                
-                # Process data
-                dates = [row[0] for row in rows]
-                scores = [float(row[1] or 0) for row in rows]
-                counts = [int(row[2] or 0) for row in rows]
-                
-                metrics = {
-                    'faithfulness': [float(row[3] or 0) for row in rows],
-                    'answer_relevancy': [float(row[4] or 0) for row in rows],
-                    'context_precision': [float(row[5] or 0) for row in rows],
-                    'context_recall': [float(row[6] or 0) for row in rows],
-                    'answer_correctness': [float(row[7] or 0) for row in rows]
+            # Set default date range if not provided
+            if not end_date:
+                end_date = datetime.now().strftime('%Y-%m-%d')
+            if not start_date:
+                start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+
+            # Fetch runs using the db_manager
+            runs = self.db_manager.get_runs_by_window(start_date, end_date)
+            if not runs:
+                return self._get_empty_time_series_stats()
+
+            # Process data using pandas for efficient aggregation
+            df = pd.DataFrame(runs)
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df['date'] = df['timestamp'].dt.date
+
+            # Group by date and aggregate
+            daily_stats = df.groupby('date').agg(
+                avg_score=('ragas_score', 'mean'),
+                count=('run_id', 'size'),
+                avg_faithfulness=('faithfulness', 'mean'),
+                avg_answer_relevancy=('answer_relevancy', 'mean'),
+                avg_context_precision=('context_precision', 'mean'),
+                avg_context_recall=('context_recall', 'mean'),
+                avg_answer_correctness=('answer_correctness', 'mean')
+            ).reset_index()
+
+            # Process data for the chart
+            dates = daily_stats['date'].astype(str).tolist()
+            scores = daily_stats['avg_score'].fillna(0).tolist()
+            counts = daily_stats['count'].tolist()
+
+            metrics = {
+                'faithfulness': daily_stats['avg_faithfulness'].fillna(0).tolist(),
+                'answer_relevancy': daily_stats['avg_answer_relevancy'].fillna(0).tolist(),
+                'context_precision': daily_stats['avg_context_precision'].fillna(0).tolist(),
+                'context_recall': daily_stats['avg_context_recall'].fillna(0).tolist(),
+                'answer_correctness': daily_stats['avg_answer_correctness'].fillna(0).tolist()
+            }
+
+            # Forecasting logic
+            forecast = self._calculate_forecast(scores)
+
+            result = {
+                'dates': dates,
+                'scores': scores,
+                'counts': counts,
+                'metrics': metrics,
+                'forecast': forecast,
+                'summary': {
+                    'total_evaluations': sum(counts),
+                    'avg_score': round(np.mean(scores), 3) if scores else 0,
+                    'trend_direction': forecast['trend_direction']
                 }
-                
-                # Simple linear regression for forecasting
-                if len(scores) >= 2:
-                    x = np.arange(len(scores))
-                    slope, intercept, r_value, p_value, std_err = stats.linregress(x, scores)
-                    
-                    next_score = slope * len(scores) + intercept
-                    confidence = abs(r_value) * 100  # Simplified confidence
-                    
-                    trend_direction = 'improving' if slope > 0.01 else 'declining' if slope < -0.01 else 'stable'
-                else:
-                    slope = 0
-                    next_score = scores[0] if scores else 0
-                    confidence = 0
-                    trend_direction = 'stable'
-                
-                result = {
-                    'dates': dates,
-                    'scores': scores,
-                    'counts': counts,
-                    'metrics': metrics,
-                    'forecast': {
-                        'trend': round(slope, 4),
-                        'next_score': round(next_score, 3),
-                        'confidence': round(confidence, 1)
-                    },
-                    'summary': {
-                        'total_evaluations': sum(counts),
-                        'avg_score': round(np.mean(scores), 3) if scores else 0,
-                        'trend_direction': trend_direction
-                    }
-                }
-                
-                logger.info(f"Generated time series stats for {len(dates)} data points")
-                return result
-                
+            }
+
+            logger.info(f"Generated time series stats for {len(dates)} data points")
+            return result
+
         except Exception as e:
             logger.error(f"Failed to get time series stats: {e}")
-            # Return empty stats on error
-            return {
-                'dates': [], 'scores': [], 'counts': [], 'metrics': {},
-                'forecast': {'trend': 0, 'next_score': 0, 'confidence': 0},
-                'summary': {'total_evaluations': 0, 'avg_score': 0, 'trend_direction': 'stable'}
-            }
+            return self._get_empty_time_series_stats()
+
+    def _get_empty_time_series_stats(self) -> Dict[str, Any]:
+        """Return a default empty structure for time series stats."""
+        return {
+            'dates': [],
+            'scores': [],
+            'counts': [],
+            'metrics': {
+                'faithfulness': [], 'answer_relevancy': [], 'context_precision': [],
+                'context_recall': [], 'answer_correctness': []
+            },
+            'forecast': {'trend': 0, 'next_score': 0, 'confidence': 0, 'trend_direction': 'stable'},
+            'summary': {'total_evaluations': 0, 'avg_score': 0, 'trend_direction': 'stable'}
+        }
+
+    def _calculate_forecast(self, scores: List[float]) -> Dict[str, Any]:
+        """Calculates trend and forecast from a list of scores."""
+        if len(scores) >= 2:
+            x = np.arange(len(scores))
+            slope, intercept, r_value, p_value, std_err = stats.linregress(x, scores)
+            next_score = slope * len(scores) + intercept
+            confidence = abs(r_value) * 100
+            trend_direction = 'improving' if slope > 0.01 else 'declining' if slope < -0.01 else 'stable'
+        else:
+            slope, next_score, confidence = 0, scores[0] if scores else 0, 0
+            trend_direction = 'stable'
+
+        return {
+            'trend': round(slope, 4),
+            'next_score': round(next_score, 3),
+            'confidence': round(confidence, 1),
+            'trend_direction': trend_direction
+        }
     
     def perform_ab_test(self, group_a_ids: List[str], group_b_ids: List[str]) -> Dict[str, Any]:
         """Perform A/B statistical test between two groups"""
         try:
-            with self.db_manager.get_connection() as conn:
-                cursor = conn.cursor()
-                
-                # Get data for both groups
-                all_ids = group_a_ids + group_b_ids
-                placeholders = ','.join('?' * len(all_ids))
-                
-                query = f"""
-                    SELECT run_id, ragas_score, faithfulness, answer_relevancy, 
-                           context_precision, context_recall, answer_correctness
-                    FROM evaluations
-                    WHERE run_id IN ({placeholders}) AND status = 'completed'
-                """
-                
-                cursor.execute(query, all_ids)
-                rows = cursor.fetchall()
-                
-                # Separate into groups
-                group_a_data = []
-                group_b_data = []
-                
-                for row in rows:
-                    run_id = row[0]
-                    scores = {
-                        'ragas_score': float(row[1] or 0),
-                        'faithfulness': float(row[2] or 0),
-                        'answer_relevancy': float(row[3] or 0),
-                        'context_precision': float(row[4] or 0),
-                        'context_recall': float(row[5] or 0),
-                        'answer_correctness': float(row[6] or 0)
+            # Fetch runs for both groups using the db_manager
+            group_a_runs = [self.db_manager.load_evaluation_model(run_id) for run_id in group_a_ids]
+            group_b_runs = [self.db_manager.load_evaluation_model(run_id) for run_id in group_b_ids]
+
+            # Filter out None values if a run was not found
+            group_a_runs = [run for run in group_a_runs if run]
+            group_b_runs = [run for run in group_b_runs if run]
+
+            if not group_a_runs or not group_b_runs:
+                return {'error': 'Insufficient data for A/B testing. At least one run from each group must be valid.'}
+
+            # Extract metric scores
+            group_a_metrics = self._extract_metrics_from_runs(group_a_runs)
+            group_b_metrics = self._extract_metrics_from_runs(group_b_runs)
+
+            # Perform statistical tests
+            results = {}
+            for metric in group_a_metrics.keys():
+                a_values = group_a_metrics[metric]
+                b_values = group_b_metrics[metric]
+
+                if not a_values or not b_values:
+                    continue
+
+                # t-test
+                t_stat, p_value = stats.ttest_ind(a_values, b_values, equal_var=False)  # Welch's t-test
+
+                # Effect size (Cohen's d)
+                cohens_d = self._calculate_cohens_d(a_values, b_values)
+
+                results[metric] = {
+                    'group_a': {
+                        'mean': round(np.mean(a_values), 3),
+                        'std': round(np.std(a_values), 3),
+                        'count': len(a_values)
+                    },
+                    'group_b': {
+                        'mean': round(np.mean(b_values), 3),
+                        'std': round(np.std(b_values), 3),
+                        'count': len(b_values)
+                    },
+                    'statistics': {
+                        't_statistic': round(t_stat, 3),
+                        'p_value': round(p_value, 3),
+                        'cohens_d': round(cohens_d, 3),
+                        'significant': p_value < 0.05
                     }
-                    
-                    if run_id in group_a_ids:
-                        group_a_data.append(scores)
-                    else:
-                        group_b_data.append(scores)
-                
-                if len(group_a_data) == 0 or len(group_b_data) == 0:
-                    # Generate synthetic data if real data is missing (for existing functionality)
-                    if len(group_a_data) == 0 and len(group_a_ids) > 0:
-                        group_a_data = self._generate_synthetic_ab_data(0.75, len(group_a_ids))
-                    if len(group_b_data) == 0 and len(group_b_ids) > 0:
-                        group_b_data = self._generate_synthetic_ab_data(0.80, len(group_b_ids))
-                
-                if not group_a_data or not group_b_data:
-                    return {'error': 'Insufficient data for A/B testing'}
-                
-                # Perform statistical tests
-                results = {}
-                for metric in ['ragas_score', 'faithfulness', 'answer_relevancy', 'context_precision', 'context_recall', 'answer_correctness']:
-                    a_values = [item[metric] for item in group_a_data]
-                    b_values = [item[metric] for item in group_b_data]
-                    
-                    # t-test
-                    t_stat, p_value = stats.ttest_ind(a_values, b_values)
-                    
-                    # Effect size (Cohen's d)
-                    pooled_std = np.sqrt(((len(a_values) - 1) * np.var(a_values) + 
-                                         (len(b_values) - 1) * np.var(b_values)) / 
-                                        (len(a_values) + len(b_values) - 2))
-                    cohens_d = (np.mean(b_values) - np.mean(a_values)) / pooled_std if pooled_std > 0 else 0
-                    
-                    results[metric] = {
-                        'group_a': {
-                            'mean': round(np.mean(a_values), 3),
-                            'std': round(np.std(a_values), 3),
-                            'count': len(a_values)
-                        },
-                        'group_b': {
-                            'mean': round(np.mean(b_values), 3),
-                            'std': round(np.std(b_values), 3),
-                            'count': len(b_values)
-                        },
-                        'statistics': {
-                            't_statistic': round(t_stat, 3),
-                            'p_value': round(p_value, 3),
-                            'cohens_d': round(cohens_d, 3),
-                            'significant': p_value < 0.05
-                        }
-                    }
-                
-                logger.info(f"A/B test completed for {len(group_a_data)} vs {len(group_b_data)} samples")
-                return results
-                
+                }
+            
+            logger.info(f"A/B test completed for {len(group_a_runs)} vs {len(group_b_runs)} runs")
+            return results
+
         except Exception as e:
             logger.error(f"A/B test failed: {e}")
             return {'error': f'A/B test failed: {str(e)}'}
+
+    def _extract_metrics_from_runs(self, runs: List[Any]) -> Dict[str, List[float]]:
+        """Helper to extract all metric scores from a list of evaluation runs."""
+        metrics_data = {
+            'ragas_score': [], 'faithfulness': [], 'answer_relevancy': [],
+            'context_precision': [], 'context_recall': [], 'answer_correctness': []
+        }
+        for run in runs:
+            if run and run.overall_metrics:
+                metrics_data['ragas_score'].append(run.ragas_score)
+                for key in metrics_data.keys():
+                    if key != 'ragas_score' and hasattr(run.overall_metrics, key):
+                        metrics_data[key].append(getattr(run.overall_metrics, key))
+        return metrics_data
+
+    def _calculate_cohens_d(self, x: List[float], y: List[float]) -> float:
+        """Calculate Cohen's d for independent samples."""
+        nx, ny = len(x), len(y)
+        dof = nx + ny - 2
+        pooled_std = np.sqrt(((nx - 1) * np.std(x, ddof=1) ** 2 + (ny - 1) * np.std(y, ddof=1) ** 2) / dof)
+        return (np.mean(y) - np.mean(x)) / pooled_std if pooled_std > 0 else 0
     
     def get_question_details(self, run_id: str) -> List[Dict[str, Any]]:
-        """Get individual question analysis - prioritize real data over synthetic"""
+        """Get individual question analysis using DatabaseManager"""
         try:
-            with self.db_manager.get_connection() as conn:
-                cursor = conn.cursor()
-                
-                # First try to get from evaluation_items table (real evaluation data)
-                cursor.execute("""
-                    SELECT item_index, question, answer, contexts, ground_truth,
-                           faithfulness, answer_relevancy, context_precision,
-                           context_recall, answer_correctness
-                    FROM evaluation_items 
-                    WHERE run_id = ? 
-                    ORDER BY item_index
-                """, (run_id,))
-                
-                items_rows = cursor.fetchall()
-                
-                if items_rows:
-                    # Use real evaluation data
-                    questions = []
-                    for row in items_rows:
-                        try:
-                            contexts = json.loads(row[3]) if row[3] else []
-                        except json.JSONDecodeError:
-                            contexts = [row[3]] if row[3] else []
-                        
-                        question_data = {
-                            'index': row[0],
-                            'question': row[1] or 'No question available',
-                            'answer': row[2] or 'No answer available',
-                            'contexts': contexts,
-                            'ground_truth': row[4] or 'No ground truth available',
-                            'scores': {
-                                'faithfulness': round(float(row[5] or 0), 3),
-                                'answer_relevancy': round(float(row[6] or 0), 3),
-                                'context_precision': round(float(row[7] or 0), 3),
-                                'context_recall': round(float(row[8] or 0), 3),
-                                'answer_correctness': round(float(row[9] or 0), 3)
-                            },
-                            'analysis': self._analyze_question_scores({
-                                'faithfulness': float(row[5] or 0),
-                                'answer_relevancy': float(row[6] or 0),
-                                'context_precision': float(row[7] or 0),
-                                'context_recall': float(row[8] or 0),
-                                'answer_correctness': float(row[9] or 0)
-                            }),
-                            'data_source': 'real_evaluation'
-                        }
-                        questions.append(question_data)
-                    
-                    logger.info(f"Retrieved {len(questions)} real evaluation items for run {run_id}")
-                    return questions
-                
-                else:
-                    # Fallback: Generate synthetic questions based on evaluation metadata
-                    logger.info(f"No evaluation items found for run {run_id}, generating synthetic data")
-                    return self._generate_synthetic_questions(run_id, conn)
-                    
+            evaluation = self.db_manager.load_evaluation_model(run_id)
+            if not evaluation or not evaluation.items:
+                logger.warning(f"No evaluation items found for run {run_id}, cannot provide details.")
+                return []
+
+            questions = []
+            for item in evaluation.items:
+                scores = item.metrics.to_dict() if item.metrics else {}
+                question_data = {
+                    'index': item.item_index,
+                    'question': item.question,
+                    'answer': item.answer,
+                    'contexts': item.contexts,
+                    'ground_truth': item.ground_truth or 'N/A',
+                    'scores': {k: round(v, 3) for k, v in scores.items()},
+                    'analysis': self._analyze_question_scores(scores),
+                    'data_source': 'real_evaluation'
+                }
+                questions.append(question_data)
+
+            logger.info(f"Retrieved {len(questions)} real evaluation items for run {run_id}")
+            return questions
+
         except Exception as e:
             logger.error(f"Failed to get question details for {run_id}: {e}")
             return []
