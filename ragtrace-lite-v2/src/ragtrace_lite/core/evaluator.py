@@ -14,23 +14,11 @@ from ragas.metrics import (
 import logging
 from pathlib import Path
 
-# .env 파일 자동 로드
-try:
-    from dotenv import load_dotenv
-    # 여러 경로 시도
-    for env_path in [
-        Path.cwd() / '.env',  # 현재 작업 디렉토리
-        Path(__file__).parent.parent.parent / '.env',  # 프로젝트 루트
-        Path.home() / '.env'  # 홈 디렉토리
-    ]:
-        if env_path.exists():
-            load_dotenv(env_path, override=True)
-            break
-except ImportError:
-    pass
+
 
 from .llm_adapter import LLMAdapter
 from .embeddings_adapter import EmbeddingsAdapter
+from ..config.config_loader import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +26,16 @@ logger = logging.getLogger(__name__)
 class Evaluator:
     """RAGAS 평가 실행기"""
     
-    def __init__(self, llm_config: Optional[Dict] = None):
+    def __init__(self, llm_config: Optional[Dict] = None, embeddings_config: Optional[Dict] = None):
         """
         Args:
             llm_config: LLM 설정 (provider, api_key, model_name 등)
+            embeddings_config: Embeddings 설정
         """
-        self.llm_config = llm_config or self._get_default_config()
+        config_loader = get_config()
+        self.llm_config = llm_config or config_loader.get_llm_config()
+        self.embeddings_config = embeddings_config or config_loader.get_embeddings_config()
+        
         self.llm = None
         self.embeddings = None
         self.metrics = []
@@ -71,7 +63,7 @@ class Evaluator:
             결과 딕셔너리 (metrics, details)
         """
         # LLM 초기화
-        self._setup_llm()
+        self._setup_models()
         
         # 메트릭 선택
         self._select_metrics(dataset, environment)
@@ -98,13 +90,13 @@ class Evaluator:
             logger.error(f"Evaluation failed: {e}")
             raise
     
-    def _setup_llm(self):
+    def _setup_models(self):
         """LLM 및 임베딩 인스턴스 생성"""
         self.llm = LLMAdapter.from_config(self.llm_config)
         logger.info(f"LLM initialized: {self.llm._llm_type}")
         
         # 설정 기반 임베딩 사용 (local or API)
-        self.embeddings = EmbeddingsAdapter()
+        self.embeddings = EmbeddingsAdapter(self.embeddings_config)
         logger.info(f"Embeddings initialized: {self.embeddings.provider}")
     
     def _select_metrics(self, dataset: Dataset, environment: Dict):

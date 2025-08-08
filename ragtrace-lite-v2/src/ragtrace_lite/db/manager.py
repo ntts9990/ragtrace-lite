@@ -318,7 +318,8 @@ class DatabaseManager:
         with self.get_connection() as conn:
             query = """
                 SELECT run_id, timestamp, dataset_name, dataset_items, 
-                       ragas_score, status
+                       ragas_score, status, faithfulness, answer_relevancy,
+                       context_precision, context_recall, answer_correctness
                 FROM evaluations
                 ORDER BY timestamp DESC
                 LIMIT ?

@@ -29,54 +29,25 @@ class DashboardService:
         logger.info(f"DashboardService initialized with DB: {self.db_manager.db_path}")
     
     def get_all_reports(self) -> List[Dict[str, Any]]:
-        """Get all evaluation reports"""
+        """Get all evaluation reports using the DatabaseManager"""
         try:
-            with self.db_manager.get_connection() as conn:
-                cursor = conn.cursor()
-                
-                query = """
-                    SELECT 
-                        run_id,
-                        dataset_name,
-                        timestamp,
-                        ragas_score,
-                        dataset_items,
-                        status,
-                        faithfulness,
-                        answer_relevancy,
-                        context_precision,
-                        context_recall,
-                        answer_correctness
-                    FROM evaluations
-                    ORDER BY timestamp DESC
-                    LIMIT 100
-                """
-                
-                cursor.execute(query)
-                rows = cursor.fetchall()
-                
-                reports = []
-                for row in rows:
-                    report = {
-                        'run_id': row[0],
-                        'dataset_name': row[1] or 'Unknown Dataset',
-                        'timestamp': row[2],
-                        'ragas_score': round(float(row[3] or 0), 3),
-                        'dataset_items': row[4] or 0,
-                        'status': row[5] or 'unknown',
-                        'faithfulness': round(float(row[6] or 0), 3),
-                        'answer_relevancy': round(float(row[7] or 0), 3),
-                        'context_precision': round(float(row[8] or 0), 3),
-                        'context_recall': round(float(row[9] or 0), 3),
-                        'answer_correctness': round(float(row[10] or 0), 3)
-                    }
-                    reports.append(report)
-                
-                logger.info(f"Retrieved {len(reports)} evaluation reports")
-                return reports
-                
+            # Use the updated db_manager method
+            raw_reports = self.db_manager.get_all_runs(limit=100)
+            
+            reports = []
+            for row in raw_reports:
+                report = dict(row)
+                # Format and round values for display
+                for key, value in report.items():
+                    if isinstance(value, float):
+                        report[key] = round(value, 3)
+                reports.append(report)
+            
+            logger.info(f"Retrieved {len(reports)} evaluation reports via db_manager")
+            return reports
+            
         except Exception as e:
-            logger.error(f"Failed to get reports: {e}")
+            logger.error(f"Failed to get reports via db_manager: {e}")
             return []
     
     def get_time_series_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict[str, Any]:
