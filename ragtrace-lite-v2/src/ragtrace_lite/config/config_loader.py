@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import re
 
+from .config_models import AppConfig, LLMConfig, EmbeddingsConfig, EvaluationConfig, DatabaseConfig, LoggingConfig, ReportsConfig, OfflineConfig
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,31 +35,34 @@ class ConfigLoader:
                     config_path = str(path)
                     break
             else:
-                # Use default config
+                # Use default config (from Pydantic model)
                 config_path = Path(__file__).parent.parent.parent / "config.yaml"
         
         self.config_path = Path(config_path)
-        self.config = self._load_config()
+        self.config: AppConfig = self._load_config()
     
-    def _load_config(self) -> Dict[str, Any]:
-        """Load configuration from YAML file"""
-        if not self.config_path.exists():
-            logger.warning(f"Config file not found: {self.config_path}")
-            return self._get_default_config()
+    def _load_config(self) -> AppConfig:
+        """Load configuration from YAML file and validate with Pydantic"""
+        raw_config = {}
+        if self.config_path.exists():
+            try:
+                with open(self.config_path, 'r', encoding='utf-8') as f:
+                    raw_config = yaml.safe_load(f)
+                
+                # Substitute environment variables
+                raw_config = self._substitute_env_vars(raw_config)
+                
+                logger.info(f"Config loaded from: {self.config_path}")
+            except Exception as e:
+                logger.error(f"Failed to load raw config from {self.config_path}: {e}")
         
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-            
-            # Substitute environment variables
-            config = self._substitute_env_vars(config)
-            
-            logger.info(f"Config loaded from: {self.config_path}")
-            return config
-            
+            # Validate and load with Pydantic model
+            return AppConfig(**raw_config)
         except Exception as e:
-            logger.error(f"Failed to load config: {e}")
-            return self._get_default_config()
+            logger.error(f"Failed to validate config with Pydantic: {e}")
+            logger.warning("Using default configuration due to validation errors.")
+            return AppConfig() # Return default valid config
     
     def _substitute_env_vars(self, config: Any) -> Any:
         """Recursively substitute environment variables in config"""
@@ -77,84 +82,6 @@ class ConfigLoader:
         else:
             return config
     
-    def _get_default_config(self) -> Dict[str, Any]:
-        """Get default configuration"""
-        return {
-            "llm": {
-                "provider": os.getenv("LLM_PROVIDER", "hcx"),
-                "hcx": {
-                    "api_url": "https://clovastudio.stream.ntruss.com/testapp/v3/chat-completions/HCX-005",
-                    "model_name": "HCX-005",
-                    "temperature": 0.1,
-                    "max_tokens": 1024,
-                    "rate_limit_delay": 5.0,
-                    "rate_limit_increment": 5.0,
-                    "api_key": os.getenv("CLOVA_STUDIO_API_KEY")
-                },
-                "gemini": {
-                    "api_url": "https://generativelanguage.googleapis.com/v1beta/models",
-                    "model_name": "gemini-2.5-flash-lite",
-                    "temperature": 0.1,
-                    "max_tokens": 1024,
-                    "rate_limit_delay": 5.0,
-                    "rate_limit_increment": 5.0,
-                    "api_key": os.getenv("GEMINI_API_KEY")
-                }
-            },
-            "embeddings": {
-                "provider": os.getenv("EMBEDDINGS_PROVIDER", "local"),
-                "local": {
-                    "model_path": "./models/bge-m3",
-                    "use_gpu": False,
-                    "batch_size": 32
-                },
-                "api": {
-                    "api_url": os.getenv("EMBEDDINGS_API_URL", "http://localhost:8080/embeddings"),
-                    "model_name": "bge-m3",
-                    "api_key": os.getenv("EMBEDDINGS_API_KEY"),
-                    "timeout": 30,
-                    "max_batch_size": 100
-                }
-            },
-            "evaluation": {
-                "batch_size": {
-                    "initial": 5,
-                    "fallback_sizes": [3, 1]
-                },
-                "retry": {
-                    "max_attempts": 3,
-                    "backoff_factor": 2.0
-                },
-                "metrics": {
-                    "base": ["faithfulness", "answer_relevancy", "context_precision"],
-                    "conditional": ["context_recall", "answer_correctness"]
-                }
-            },
-            "database": {
-                "path": os.getenv("DB_PATH", "ragtrace.db"),
-                "wal_mode": True
-            },
-            "logging": {
-                "level": os.getenv("LOG_LEVEL", "INFO"),
-                "file": "ragtrace.log",
-                "console": True,
-                "timestamps": True
-            },
-            "reports": {
-                "output_dir": "results",
-                "formats": ["html", "json", "markdown"],
-                "include_details": True,
-                "include_plots": True
-            },
-            "offline": {
-                "enabled": os.getenv("OFFLINE_MODE", "false").lower() == "true",
-                "models_dir": "./models",
-                "wheels_dir": "./offline_wheels",
-                "python_version": "3.9",
-                "platforms": ["win_amd64", "win32"]
-            }
-        }
-    
     def get(self, key_path: str, default: Any = None) -> Any:
         """
         Get configuration value by dot-separated path
@@ -170,34 +97,40 @@ class ConfigLoader:
         value = self.config
         
         for key in keys:
-            if isinstance(value, dict) and key in value:
+            if isinstance(value, BaseModel) and hasattr(value, key):
+                value = getattr(value, key)
+            elif isinstance(value, dict) and key in value:
                 value = value[key]
             else:
                 return default
         
         return value
     
-    def get_llm_config(self, provider: Optional[str] = None) -> Dict[str, Any]:
+    def get_llm_config(self, provider: Optional[str] = None) -> LLMConfig:
         """Get LLM configuration for specified provider"""
         if provider is None:
-            provider = self.get("llm.provider", "hcx")
+            provider = self.config.llm.provider
         
-        config = self.get(f"llm.{provider}", {})
-        config["provider"] = provider
-        
-        return config
+        if provider == "hcx":
+            return self.config.llm.hcx
+        elif provider == "gemini":
+            return self.config.llm.gemini
+        else:
+            raise ValueError(f"Unknown LLM provider: {provider}")
     
-    def get_embeddings_config(self, provider: Optional[str] = None) -> Dict[str, Any]:
+    def get_embeddings_config(self, provider: Optional[str] = None) -> EmbeddingsConfig:
         """Get embeddings configuration for specified provider"""
         if provider is None:
-            provider = self.get("embeddings.provider", "local")
+            provider = self.config.embeddings.provider
         
-        config = self.get(f"embeddings.{provider}", {})
-        config["provider"] = provider
-        
-        return config
+        if provider == "local":
+            return self.config.embeddings.local
+        elif provider == "api":
+            return self.config.embeddings.api
+        else:
+            raise ValueError(f"Unknown embeddings provider: {provider}")
     
-    def save_config(self, config: Optional[Dict[str, Any]] = None):
+    def save_config(self, config: Optional[AppConfig] = None):
         """Save configuration to file"""
         if config is None:
             config = self.config
@@ -206,7 +139,7 @@ class ConfigLoader:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
             
             with open(self.config_path, 'w', encoding='utf-8') as f:
-                yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+                yaml.dump(config.dict(), f, default_flow_style=False, allow_unicode=True)
             
             logger.info(f"Config saved to: {self.config_path}")
             

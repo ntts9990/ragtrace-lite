@@ -341,6 +341,34 @@ class DatabaseManager:
             cursor = conn.execute(query, (run_id,))
             row = cursor.fetchone()
             return dict(row) if row else None
+
+    def get_runs_by_ids(self, run_ids: List[str]) -> List[Dict]:
+        """주어진 ID 목록에 해당하는 실행들을 조회"""
+        if not run_ids:
+            return []
+        with self.get_connection() as conn:
+            placeholders = ', '.join(['?' for _ in run_ids])
+            query = f"""
+                SELECT run_id, timestamp, dataset_name, dataset_items, 
+                       ragas_score, status, faithfulness, answer_relevancy,
+                       context_precision, context_recall, answer_correctness
+                FROM evaluations
+                WHERE run_id IN ({placeholders})
+                ORDER BY timestamp DESC
+            """
+            cursor = conn.execute(query, run_ids)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_metric_summaries(self, run_id: str) -> List[Dict]:
+        """특정 실행의 메트릭 요약 정보 조회"""
+        with self.get_connection() as conn:
+            query = """
+                SELECT metric_name, avg_score, min_score, max_score, std_score, count
+                FROM evaluation_metric_summary
+                WHERE run_id = ?
+            """
+            cursor = conn.execute(query, (run_id,))
+            return [dict(row) for row in cursor.fetchall()]
     
     # ============ Pydantic Model Support Methods ============
     
