@@ -1,0 +1,20 @@
+# Core dependencies - Windows compatible versions
+pandas>=2.0.0
+numpy>=1.20.0
+scipy>=1.10.0,<2.0  # Version 2.0+ may have issues on some Windows systems
+openpyxl>=3.0.0
+xlrd>=2.0.0  # Fallback for Excel reading
+click>=8.0.0
+
+# LLM and RAG
+ragas>=0.1.0
+langchain>=0.0.300
+datasets>=2.14.0
+
+# Network
+requests>=2.31.0
+certifi>=2023.0.0  # For SSL certificates on Windows
+
+# Windows specific
+colorama>=0.4.0  # Console colors
+pywin32>=300  # Windows API access

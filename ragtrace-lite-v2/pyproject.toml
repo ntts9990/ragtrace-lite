@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ragtrace-lite"
+version = "2.0.0"
+description = "Lightweight RAG evaluation framework with Excel integration"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "RAGTrace Team", email = "ragtrace@example.com"}
+]
+keywords = ["rag", "evaluation", "llm", "testing", "excel", "statistics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "pandas>=2.0.0",
+    "numpy>=1.20.0",
+    "scipy>=1.10.0,<2.0",
+    "openpyxl>=3.0.0",
+    "click>=8.0.0",
+    "ragas>=0.1.0",
+    "langchain>=0.0.300",
+    "datasets>=2.14.0",
+    "requests>=2.31.0",
+    "certifi>=2023.0.0",
+    "pillow>=11.3.0",
+    "sentence-transformers>=5.1.0",
+    "torch>=2.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+
+windows = [
+    "colorama>=0.4.0",
+    "pywin32>=300; sys_platform == 'win32'",
+]
+
+all = [
+    "ragtrace-lite[dev]",
+    "ragtrace-lite[windows]",
+]
+
+[project.scripts]
+ragtrace = "ragtrace_lite.cli:main"
+ragtrace-lite = "ragtrace_lite.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/your-org/ragtrace-lite"
+Documentation = "https://ragtrace-lite.readthedocs.io"
+Repository = "https://github.com/your-org/ragtrace-lite"
+Issues = "https://github.com/your-org/ragtrace-lite/issues"
+Changelog = "https://github.com/your-org/ragtrace-lite/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ragtrace_lite = ["templates/*.html", "data/*.xlsx"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=ragtrace_lite --cov-report=html --cov-report=term"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
