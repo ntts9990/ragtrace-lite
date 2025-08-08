@@ -232,9 +232,10 @@
                                                 <span x-text="question.issues?.[0] || '-'"></span>
                                             </td>
                                             <td class="text-center p-3">
-                                                <button @click="showQuestionDetail(question)"
+                                                <button onclick="window.dispatchEvent(new CustomEvent('showQuestionDetail', {detail: this.dataset}))"
+                                                    :data-question="JSON.stringify(question)"
                                                     type="button"
-                                                    class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                                    class="text-indigo-600 hover:text-indigo-800 text-sm font-medium cursor-pointer">
                                                     상세보기
                                                 </button>
                                             </td>
@@ -553,7 +554,21 @@
                 charts: {},
                 
                 async init() {
+                    console.log('Initializing dashboard...');
                     await this.loadReports();
+                    
+                    // Setup event listener for question detail
+                    window.addEventListener('showQuestionDetail', (e) => {
+                        if (e.detail && e.detail.question) {
+                            try {
+                                const question = JSON.parse(e.detail.question);
+                                this.showQuestionDetail(question);
+                            } catch (err) {
+                                console.error('Error parsing question data:', err);
+                            }
+                        }
+                    });
+                    
                     // Auto-select first report if available
                     if (this.filteredReports.length > 0) {
                         await this.selectReport(this.filteredReports[0]);
@@ -745,14 +760,28 @@
                 },
                 
                 updateCharts() {
+                    console.log('Updating charts with data:', this.selectedReport);
+                    
                     // Destroy existing charts
-                    Object.values(this.charts).forEach(chart => chart?.destroy());
+                    Object.values(this.charts).forEach(chart => {
+                        try {
+                            chart?.destroy();
+                        } catch(e) {
+                            console.error('Error destroying chart:', e);
+                        }
+                    });
                     this.charts = {};
                     
-                    // Create radar chart
-                    const radarCtx = document.getElementById('metricsRadar');
-                    if (radarCtx) {
-                        this.charts.radar = new Chart(radarCtx, {
+                    // Wait for DOM to update
+                    this.$nextTick(() => {
+                        // Create radar chart
+                        const radarCtx = document.getElementById('metricsRadar');
+                        console.log('Radar canvas element:', radarCtx);
+                        
+                        if (radarCtx && radarCtx.getContext) {
+                            try {
+                                const ctx = radarCtx.getContext('2d');
+                                this.charts.radar = new Chart(ctx, {
                             type: 'radar',
                             data: {
                                 labels: ['충실도', '답변 관련성', '컨텍스트 정밀도', '컨텍스트 재현율', '답변 정확도'],
@@ -781,12 +810,20 @@
                                 }
                             }
                         });
-                    }
-                    
-                    // Create bar chart
-                    const barCtx = document.getElementById('metricsBar');
-                    if (barCtx) {
-                        this.charts.bar = new Chart(barCtx, {
+                                console.log('Radar chart created successfully');
+                            } catch(e) {
+                                console.error('Error creating radar chart:', e);
+                            }
+                        }
+                        
+                        // Create bar chart
+                        const barCtx = document.getElementById('metricsBar');
+                        console.log('Bar canvas element:', barCtx);
+                        
+                        if (barCtx && barCtx.getContext) {
+                            try {
+                                const ctx = barCtx.getContext('2d');
+                                this.charts.bar = new Chart(ctx, {
                             type: 'bar',
                             data: {
                                 labels: ['충실도', '답변 관련성', '컨텍스트 정밀도', '컨텍스트 재현율', '답변 정확도'],
@@ -819,7 +856,12 @@
                                 }
                             }
                         });
-                    }
+                                console.log('Bar chart created successfully');
+                            } catch(e) {
+                                console.error('Error creating bar chart:', e);
+                            }
+                        }
+                    });
                 },
                 
                 createQuestionHeatmap() {
@@ -851,13 +893,21 @@
                 },
                 
                 createABCharts() {
-                    // Create comparison charts
-                    const compCtx = document.getElementById('abComparisonChart');
-                    if (compCtx && this.abTestResults) {
+                    console.log('Creating A/B charts with results:', this.abTestResults);
+                    
+                    // Wait for DOM
+                    this.$nextTick(() => {
+                        // Create comparison charts
+                        const compCtx = document.getElementById('abComparisonChart');
+                        console.log('A/B comparison canvas:', compCtx);
+                        
+                        if (compCtx && compCtx.getContext && this.abTestResults) {
+                            try {
+                                const ctx = compCtx.getContext('2d');
                         const metrics = ['faithfulness', 'answer_relevancy', 'context_precision', 
                                        'context_recall', 'answer_correctness'];
                         
-                        this.charts.abComparison = new Chart(compCtx, {
+                                this.charts.abComparison = new Chart(ctx, {
                             type: 'bar',
                             data: {
                                 labels: metrics.map(m => this.getMetricLabel(m)),
@@ -884,10 +934,15 @@
                                 }
                             }
                         });
-                    }
-                    
-                    // Create confidence interval chart
-                    this.createConfidenceIntervalChart();
+                                console.log('A/B comparison chart created successfully');
+                            } catch(e) {
+                                console.error('Error creating A/B chart:', e);
+                            }
+                        }
+                        
+                        // Create confidence interval chart
+                        this.createConfidenceIntervalChart();
+                    });
                 },
                 
                 createConfidenceIntervalChart() {
