@@ -387,16 +387,16 @@ class DashboardService:
                     
                     results[metric] = {
                         'test_name': test_result.test_name,
-                        'statistic': test_result.statistic,
-                        'p_value': test_result.p_value,
-                        'significant': test_result.significant,
-                        'effect_size': test_result.effect_size,
-                        'confidence_interval': test_result.confidence_interval,
+                        'statistic': float(test_result.statistic),
+                        'p_value': float(test_result.p_value),
+                        'significant': bool(test_result.significant),
+                        'effect_size': float(test_result.effect_size),
+                        'confidence_interval': [float(x) for x in test_result.confidence_interval] if test_result.confidence_interval else None,
                         'interpretation': test_result.interpretation,
-                        'mean_a': np.mean(values_a),
-                        'mean_b': np.mean(values_b),
-                        'std_a': np.std(values_a),
-                        'std_b': np.std(values_b)
+                        'mean_a': float(np.mean(values_a)),
+                        'mean_b': float(np.mean(values_b)),
+                        'std_a': float(np.std(values_a)),
+                        'std_b': float(np.std(values_b))
                     }
             
             # Overall comparison
@@ -417,14 +417,14 @@ class DashboardService:
                 overall_result = analyzer.analyze_comparison(overall_a, overall_b)
                 results['overall'] = {
                     'test_name': overall_result.test_name,
-                    'statistic': overall_result.statistic,
-                    'p_value': overall_result.p_value,
-                    'significant': overall_result.significant,
-                    'effect_size': overall_result.effect_size,
-                    'confidence_interval': overall_result.confidence_interval,
+                    'statistic': float(overall_result.statistic),
+                    'p_value': float(overall_result.p_value),
+                    'significant': bool(overall_result.significant),
+                    'effect_size': float(overall_result.effect_size),
+                    'confidence_interval': [float(x) for x in overall_result.confidence_interval] if overall_result.confidence_interval else None,
                     'interpretation': overall_result.interpretation,
-                    'mean_a': np.mean(overall_a),
-                    'mean_b': np.mean(overall_b)
+                    'mean_a': float(np.mean(overall_a)),
+                    'mean_b': float(np.mean(overall_b))
                 }
             
             return results
@@ -528,7 +528,7 @@ def export_report(run_id):
     
     return jsonify({'error': 'Report not found'}), 404
 
-def run_dashboard(host='127.0.0.1', port=5000, debug=True):
+def run_dashboard(host='127.0.0.1', port=5001, debug=True):
     """Run the dashboard server"""
     logger.info(f"Starting RAGTrace Dashboard on http://{host}:{port}")
     app.run(host=host, port=port, debug=debug)

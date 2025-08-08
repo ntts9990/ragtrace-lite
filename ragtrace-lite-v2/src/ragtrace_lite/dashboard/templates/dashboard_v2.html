@@ -232,7 +232,7 @@
                                                 <span x-text="question.issues?.[0] || '-'"></span>
                                             </td>
                                             <td class="text-center p-3">
-                                                <button @click="showQuestionDetail(question)"
+                                                <button @click.stop="showQuestionDetail(question)"
                                                     class="text-indigo-600 hover:text-indigo-800 text-sm">
                                                     상세보기
                                                 </button>
@@ -563,11 +563,19 @@
                 },
                 
                 selectForAB(report, group) {
-                    this.abSelection[group] = report;
+                    // Toggle selection - if already selected, deselect
+                    if (this.abSelection[group]?.run_id === report.run_id) {
+                        this.abSelection[group] = null;
+                    } else {
+                        this.abSelection[group] = report;
+                    }
                 },
                 
                 async performABTest() {
-                    if (!this.abSelection.a || !this.abSelection.b) return;
+                    if (!this.abSelection.a || !this.abSelection.b) {
+                        alert('A그룹과 B그룹을 모두 선택해주세요.');
+                        return;
+                    }
                     
                     try {
                         const response = await fetch('/api/ab-test', {
@@ -579,12 +587,26 @@
                             })
                         });
                         
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
                         this.abTestResults = await response.json();
+                        
+                        if (this.abTestResults.error) {
+                            alert('A/B 테스트 실행 중 오류: ' + this.abTestResults.error);
+                            return;
+                        }
+                        
+                        // Switch to A/B test view to show results
+                        this.viewMode = 'ab-test';
+                        
                         this.$nextTick(() => {
                             this.createABCharts();
                         });
                     } catch (error) {
                         console.error('Failed to perform A/B test:', error);
+                        alert('A/B 테스트 실행 실패: ' + error.message);
                     }
                 },
                 
