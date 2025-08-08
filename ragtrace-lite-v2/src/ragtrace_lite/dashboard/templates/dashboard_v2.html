@@ -404,53 +404,133 @@
     <div x-show="showQuestionModal" x-cloak
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         @click.self="showQuestionModal = false">
-        <div class="bg-white rounded-xl shadow-xl p-6 max-w-4xl max-h-[80vh] overflow-y-auto">
-            <h3 class="text-xl font-semibold mb-4">문항 상세 분석</h3>
-            <div class="space-y-4">
-                <div>
-                    <p class="font-medium text-gray-700">질문</p>
-                    <p class="mt-1" x-text="selectedQuestion?.question"></p>
+        <div class="bg-white rounded-xl shadow-xl p-6 max-w-5xl w-[90%] max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">문항 상세 분석</h3>
+                <button @click="showQuestionModal = false" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="space-y-6">
+                <!-- Question Section -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <p class="font-semibold text-blue-900 mb-2">📝 질문</p>
+                    <p class="text-gray-800" x-text="selectedQuestion?.question || selectedQuestion?.raw_question || '데이터 없음'"></p>
                 </div>
-                <div>
-                    <p class="font-medium text-gray-700">답변</p>
-                    <p class="mt-1" x-text="selectedQuestion?.answer"></p>
+                
+                <!-- Answer Section -->
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <p class="font-semibold text-green-900 mb-2">💬 생성된 답변</p>
+                    <p class="text-gray-800" x-text="selectedQuestion?.answer || selectedQuestion?.raw_answer || '데이터 없음'"></p>
                 </div>
+                
+                <!-- Ground Truth Section (if available) -->
+                <div x-show="selectedQuestion?.ground_truth" class="bg-purple-50 p-4 rounded-lg">
+                    <p class="font-semibold text-purple-900 mb-2">✅ 정답 (Ground Truth)</p>
+                    <p class="text-gray-800" x-text="selectedQuestion?.ground_truth || 'N/A'"></p>
+                </div>
+                
+                <!-- Contexts Section -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="font-semibold text-gray-900 mb-2">📚 검색된 컨텍스트</p>
+                    <div class="space-y-2">
+                        <template x-for="(context, idx) in (selectedQuestion?.contexts || selectedQuestion?.raw_contexts || [])" :key="idx">
+                            <div class="bg-white p-3 rounded border border-gray-200">
+                                <span class="text-xs text-gray-500">Context <span x-text="idx + 1"></span>:</span>
+                                <p class="mt-1 text-sm" x-text="context"></p>
+                            </div>
+                        </template>
+                        <p x-show="!(selectedQuestion?.contexts?.length || selectedQuestion?.raw_contexts?.length)" class="text-gray-500 text-sm">
+                            컨텍스트 정보가 없습니다.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Metrics Section -->
                 <div>
-                    <p class="font-medium text-gray-700">메트릭 점수</p>
-                    <div class="grid grid-cols-5 gap-2 mt-2">
+                    <p class="font-semibold text-gray-900 mb-3">📊 평가 메트릭</p>
+                    <div class="grid grid-cols-5 gap-3">
                         <template x-for="[metric, score] in Object.entries(selectedQuestion?.metrics || {})" :key="metric">
-                            <div class="text-center p-2 bg-gray-50 rounded">
+                            <div class="bg-white border rounded-lg p-3 text-center"
+                                :class="{
+                                    'border-green-400 bg-green-50': score >= 0.8,
+                                    'border-yellow-400 bg-yellow-50': score >= 0.6 && score < 0.8,
+                                    'border-red-400 bg-red-50': score < 0.6
+                                }">
                                 <p class="text-xs text-gray-600" x-text="getMetricLabel(metric)"></p>
-                                <p class="font-bold" x-text="score.toFixed(3)"></p>
+                                <p class="text-lg font-bold mt-1" 
+                                   :class="{
+                                       'text-green-700': score >= 0.8,
+                                       'text-yellow-700': score >= 0.6 && score < 0.8,
+                                       'text-red-700': score < 0.6
+                                   }"
+                                   x-text="(score || 0).toFixed(3)"></p>
                             </div>
                         </template>
                     </div>
+                    
+                    <!-- Overall Score -->
+                    <div class="mt-3 text-center p-3 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-lg">
+                        <p class="text-sm text-gray-600">종합 점수</p>
+                        <p class="text-2xl font-bold" 
+                           :class="{
+                               'text-green-600': selectedQuestion?.overall_score >= 0.8,
+                               'text-yellow-600': selectedQuestion?.overall_score >= 0.6 && selectedQuestion?.overall_score < 0.8,
+                               'text-red-600': selectedQuestion?.overall_score < 0.6
+                           }"
+                           x-text="(selectedQuestion?.overall_score || 0).toFixed(3)"></p>
+                        <span class="inline-block mt-1 px-2 py-1 text-xs rounded-full"
+                              :class="{
+                                  'bg-green-200 text-green-800': selectedQuestion?.status === 'good',
+                                  'bg-yellow-200 text-yellow-800': selectedQuestion?.status === 'warning',
+                                  'bg-red-200 text-red-800': selectedQuestion?.status === 'poor'
+                              }"
+                              x-text="selectedQuestion?.status || 'N/A'"></span>
+                    </div>
                 </div>
-                <div>
-                    <p class="font-medium text-gray-700">문제점</p>
-                    <ul class="mt-2 space-y-1">
-                        <template x-for="issue in selectedQuestion?.issues" :key="issue">
-                            <li class="text-sm text-red-600">• <span x-text="issue"></span></li>
+                
+                <!-- Issues Section -->
+                <div x-show="selectedQuestion?.issues?.length > 0" class="bg-red-50 p-4 rounded-lg">
+                    <p class="font-semibold text-red-900 mb-2">⚠️ 발견된 문제점</p>
+                    <ul class="space-y-1">
+                        <template x-for="issue in (selectedQuestion?.issues || [])" :key="issue">
+                            <li class="text-sm text-red-700 flex items-start">
+                                <span class="mr-2">•</span>
+                                <span x-text="issue"></span>
+                            </li>
                         </template>
                     </ul>
                 </div>
-                <div>
-                    <p class="font-medium text-gray-700">개선 권장사항</p>
-                    <ul class="mt-2 space-y-1">
-                        <template x-for="rec in selectedQuestion?.recommendations" :key="rec">
-                            <li class="text-sm text-blue-600">• <span x-text="rec"></span></li>
+                
+                <!-- Recommendations Section -->
+                <div x-show="selectedQuestion?.recommendations?.length > 0" class="bg-blue-50 p-4 rounded-lg">
+                    <p class="font-semibold text-blue-900 mb-2">💡 개선 권장사항</p>
+                    <ul class="space-y-1">
+                        <template x-for="rec in (selectedQuestion?.recommendations || [])" :key="rec">
+                            <li class="text-sm text-blue-700 flex items-start">
+                                <span class="mr-2">•</span>
+                                <span x-text="rec"></span>
+                            </li>
                         </template>
                     </ul>
                 </div>
-                <div>
-                    <p class="font-medium text-gray-700">해석</p>
-                    <p class="mt-1 text-sm bg-yellow-50 p-3 rounded" x-text="selectedQuestion?.interpretation"></p>
+                
+                <!-- Interpretation Section -->
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <p class="font-semibold text-yellow-900 mb-2">🔍 종합 해석</p>
+                    <p class="text-sm text-gray-800" x-text="selectedQuestion?.interpretation || '해석 정보가 없습니다.'"></p>
                 </div>
             </div>
-            <button @click="showQuestionModal = false"
-                class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                닫기
-            </button>
+            
+            <div class="mt-6 flex justify-end">
+                <button @click="showQuestionModal = false"
+                    class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                    닫기
+                </button>
+            </div>
         </div>
     </div>
     

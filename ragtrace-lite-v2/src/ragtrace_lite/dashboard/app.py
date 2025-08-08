@@ -303,13 +303,20 @@ class DashboardService:
             for detail in details:
                 detail_dict = dict(detail)
                 
+                # Parse contexts if it's a string
+                if isinstance(detail_dict.get('contexts'), str):
+                    try:
+                        detail_dict['contexts'] = json.loads(detail_dict['contexts'])
+                    except:
+                        detail_dict['contexts'] = [detail_dict.get('contexts', '')]
+                
                 # Parse metrics
                 metrics = {
-                    'faithfulness': detail_dict.get('faithfulness', 0),
-                    'answer_relevancy': detail_dict.get('answer_relevancy', 0),
-                    'context_precision': detail_dict.get('context_precision', 0),
-                    'context_recall': detail_dict.get('context_recall', 0),
-                    'answer_correctness': detail_dict.get('answer_correctness', 0)
+                    'faithfulness': detail_dict.get('faithfulness', 0) or 0,
+                    'answer_relevancy': detail_dict.get('answer_relevancy', 0) or 0,
+                    'context_precision': detail_dict.get('context_precision', 0) or 0,
+                    'context_recall': detail_dict.get('context_recall', 0) or 0,
+                    'answer_correctness': detail_dict.get('answer_correctness', 0) or 0
                 }
                 
                 # Analyze question
@@ -319,14 +326,18 @@ class DashboardService:
                     'question_id': detail_dict.get('item_index', detail_dict.get('question_id')),
                     'question': analysis.question_text,
                     'answer': analysis.answer_text,
-                    'contexts': analysis.contexts,
-                    'ground_truth': analysis.ground_truth,
+                    'contexts': analysis.contexts if isinstance(analysis.contexts, list) else [analysis.contexts],
+                    'ground_truth': analysis.ground_truth or detail_dict.get('ground_truth', ''),
                     'metrics': metrics,
                     'overall_score': analysis.overall_score,
                     'status': analysis.status,
                     'issues': analysis.issues,
                     'recommendations': analysis.recommendations,
-                    'interpretation': analysis.interpretation
+                    'interpretation': analysis.interpretation,
+                    # Add raw data for debugging
+                    'raw_question': detail_dict.get('question', ''),
+                    'raw_answer': detail_dict.get('answer', ''),
+                    'raw_contexts': detail_dict.get('contexts', [])
                 })
             
             conn.close()
