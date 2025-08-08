@@ -40,12 +40,7 @@ class Evaluator:
         self.embeddings = None
         self.metrics = []
     
-    def _get_default_config(self) -> Dict:
-        """기본 LLM 설정 - ConfigLoader 사용"""
-        from ..config.config_loader import get_config
-        
-        config_loader = get_config()
-        return config_loader.get_llm_config()
+    
     
     def evaluate(
         self,
@@ -87,8 +82,8 @@ class Evaluator:
             return output
             
         except Exception as e:
-            logger.error(f"Evaluation failed: {e}")
-            raise
+            logger.error(f"Evaluation failed: {e}", exc_info=True)
+            raise RuntimeError(f"RAGAS evaluation failed: {e}")
     
     def _setup_models(self):
         """LLM 및 임베딩 인스턴스 생성"""
@@ -129,7 +124,7 @@ class Evaluator:
         
         return len(ground_truths) > 0 and ground_truths[0] != ""
     
-    def _process_results(self, results) -> Dict[str, Any]:
+    def _process_results(self, results: Any) -> Dict[str, Any]:
         """DataFrame 기반 안정적인 결과 처리"""
         import pandas as pd
         
@@ -166,7 +161,7 @@ class Evaluator:
             output['details'] = df.to_dict('records')
             
         except Exception as e:
-            logger.warning(f"Failed to process with DataFrame: {e}")
+            logger.warning(f"Failed to process with DataFrame: {e}", exc_info=True)
             # 폴백: 기본 처리
             for metric in self.metrics:
                 metric_name = metric.name

@@ -13,12 +13,12 @@ logger = logging.getLogger(__name__)
 class AdaptiveEvaluator(Evaluator):
     """배치 크기를 동적으로 조정하는 평가기"""
     
-    def __init__(self, llm_config: Optional[Dict] = None):
-        super().__init__(llm_config)
+    def __init__(self, llm_config: Optional[Dict] = None, embeddings_config: Optional[Dict] = None):
+        super().__init__(llm_config, embeddings_config)
         self.initial_batch_size = 5
         self.min_batch_size = 1
         self.current_batch_size = self.initial_batch_size
-    
+
     def evaluate(
         self,
         dataset: Dataset,
@@ -34,8 +34,8 @@ class AdaptiveEvaluator(Evaluator):
         Returns:
             결과 딕셔너리 (metrics, details)
         """
-        # LLM 초기화
-        self._setup_llm()
+        # LLM 및 임베딩 초기화
+        self._setup_models()
         
         # 메트릭 선택
         self._select_metrics(dataset, environment)
@@ -77,16 +77,20 @@ class AdaptiveEvaluator(Evaluator):
             except Exception as e:
                 error_msg = str(e).lower()
                 
-                # Rate limit 또는 오버로드 에러 감지
-                if any(keyword in error_msg for keyword in ['429', 'rate', 'too many', 'overload', 'timeout']):
+                # LLMAdapter의 rate_limiter 통계 확인
+                rate_limiter_stats = self.llm.get_rate_limit_stats()
+                failure_rate = rate_limiter_stats.get('failure_rate', 0)
+                
+                # Rate limit 또는 오버로드 에러 감지 및 실패율 고려
+                if any(keyword in error_msg for keyword in ['429', 'rate', 'too many', 'overload', 'timeout']) or failure_rate > 0.2:
                     # 배치 크기 감소
                     if self.current_batch_size > self.min_batch_size:
                         self.current_batch_size = max(self.min_batch_size, self.current_batch_size // 2)
-                        logger.warning(f"Rate limit/overload detected. Reducing batch size to {self.current_batch_size}")
+                        logger.warning(f"Rate limit/overload detected (failure rate: {failure_rate:.2f}). Reducing batch size to {self.current_batch_size}")
                         
                         # 추가 대기
-                        wait_time = 10.0
-                        logger.info(f"Waiting {wait_time}s before retry with smaller batch...")
+                        wait_time = 10.0 + (failure_rate * 20) # 실패율에 따라 대기 시간 증가
+                        logger.info(f"Waiting {wait_time:.2f}s before retry with smaller batch...")
                         time.sleep(wait_time)
                         continue
                     else:

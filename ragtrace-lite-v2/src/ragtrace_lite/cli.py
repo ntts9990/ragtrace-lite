@@ -42,20 +42,27 @@ from ragtrace_lite.core.evaluator import Evaluator
 from ragtrace_lite.core.adaptive_evaluator import AdaptiveEvaluator
 from ragtrace_lite.db.manager import DatabaseManager
 from ragtrace_lite.stats.window_compare import WindowComparator
-from ragtrace_lite.report.generator import ReportGenerator
+from ragtrace_lite.report.generator import ReportGenerator, ReportFormat
 from ragtrace_lite import __version__
+from ragtrace_lite.config.config_loader import get_config
 
-# 로깅 설정 (UTF-8 인코딩)
-log_handlers = [
-    logging.StreamHandler(),
-    logging.FileHandler('ragtrace.log', encoding='utf-8')
-]
+# 로깅 설정
+def setup_logging(debug: bool = False):
+    config = get_config()
+    log_config = config.get('logging', {})
+    
+    level = logging.DEBUG if debug else log_config.get('level', 'INFO').upper()
+    log_file = log_config.get('file', 'ragtrace.log')
+    
+    handlers = [logging.StreamHandler()]
+    if log_file:
+        handlers.append(logging.FileHandler(log_file, encoding='utf-8'))
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=log_handlers
-)
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=handlers
+    )
 
 logger = logging.getLogger(__name__)
 

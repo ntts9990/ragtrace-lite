@@ -4,16 +4,16 @@ import os
 import time
 import json
 import re
-import requests
 from typing import Optional, List, Any, Dict
 from langchain.llms.base import LLM
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 import logging
-from pathlib import Path
 
 import random
 
 from .rate_limiter import get_rate_limiter
+from .providers.hcx_provider import HCXProvider
+from .providers.gemini_provider import GeminiProvider
 
 logger = logging.getLogger(__name__)
 
@@ -21,19 +21,21 @@ logger = logging.getLogger(__name__)
 class LLMAdapter(LLM):
     """통합 LLM 어댑터"""
     
-    provider: str = "hcx"  # "hcx" or "gemini"
+    provider: str
     api_key: str
-    model_name: str = "HCX-005"
-    api_url: str = ""
-    temperature: float = 0.1
-    max_tokens: int = 1000
-    rate_limit_delay: float = 5.0  # 초기 5초
+    model_name: str
+    api_url: str
+    temperature: float
+    max_tokens: int
+    rate_limit_delay: float
     max_retries: int = 5
     backoff_factor: float = 1.5
     
+    _provider_instance: Any = None
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # _setup_provider is called implicitly via from_config
+        self._initialize_provider()
         
         # Initialize rate limiter
         rate_limit_config = {
@@ -43,13 +45,27 @@ class LLMAdapter(LLM):
         }
         self.rate_limiter = get_rate_limiter(self.provider, rate_limit_config)
     
-    def _setup_provider(self):
-        """프로바이더별 설정 - from_config를 통해 주입된 값 사용"""
-        if not self.api_url:
-            raise ValueError("api_url must be provided from config")
-        if not self.model_name:
-            raise ValueError("model_name must be provided from config")
-    
+    def _initialize_provider(self):
+        """프로바이더 인스턴스 초기화"""
+        if self.provider == "hcx":
+            self._provider_instance = HCXProvider(
+                api_url=self.api_url,
+                api_key=self.api_key,
+                model_name=self.model_name,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
+            )
+        elif self.provider == "gemini":
+            self._provider_instance = GeminiProvider(
+                api_url=self.api_url,
+                api_key=self.api_key,
+                model_name=self.model_name,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
+            )
+        else:
+            raise ValueError(f"Unsupported provider: {self.provider}")
+
     @property
     def _llm_type(self) -> str:
         return f"{self.provider}-{self.model_name}"
@@ -70,15 +86,10 @@ class LLMAdapter(LLM):
                 if wait_time > 0:
                     logger.debug(f"Rate limiter applied {wait_time:.2f}s delay")
                 
-                if self.provider == "hcx":
-                    response = self._call_hcx(enhanced_prompt, stop)
-                elif self.provider == "gemini":
-                    response = self._call_gemini(enhanced_prompt, stop)
-                else:
-                    response = ""
+                response = self._provider_instance.generate(enhanced_prompt, stop)
                 
                 self.rate_limiter.record_request_result(success=True)
-                return response
+                return self._clean_response(response)
                 
             except Exception as e:
                 error_msg = str(e).lower()

@@ -21,6 +21,23 @@ app = Flask(__name__,
             static_folder='static')
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
+# --- Error Handling ---
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Return JSON instead of HTML for API errors."""
+    # Pass through HTTP errors
+    if isinstance(e, click.exceptions.HTTPException):
+        return e
+
+    # Now you're handling non-HTTP exceptions only
+    logger.error(f"Unhandled exception: {e}", exc_info=True)
+    response = {
+        "error": "Internal Server Error",
+        "message": str(e)
+    }
+    return jsonify(response), 500
+
+
 # --- Configuration and Service Initialization ---
 
 # Use ConfigLoader for all configurations
