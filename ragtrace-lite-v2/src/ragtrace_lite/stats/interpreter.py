@@ -90,10 +90,18 @@ Metric meanings:
 - context_recall: Coverage of ground truth by context (1.0 = perfect)
 - answer_correctness: Correctness compared to ground truth (1.0 = perfect)
 
-Keep the interpretation under 150 words."""
+Provide your response as plain text, not JSON. Keep the interpretation under 150 words."""
 
         try:
-            interpretation = self.llm.invoke(prompt)
+            # 프롬프트를 더 명확하게 만들기
+            enhanced_prompt = f"Analyze these RAG metrics and provide insights:\n\n{prompt}"
+            interpretation = self.llm.invoke(enhanced_prompt)
+            
+            # JSON 응답이 올 경우 처리
+            if interpretation.strip().startswith('{'):
+                logger.warning("LLM returned JSON instead of text, using fallback")
+                return self._get_fallback_metrics_interpretation(metrics)
+            
             return interpretation.strip()
         except Exception as e:
             logger.error(f"Failed to generate metrics interpretation: {e}")

@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAGTrace Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .sidebar-scrollbar::-webkit-scrollbar { width: 6px; }
+        .sidebar-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .sidebar-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+        .sidebar-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div x-data="dashboardApp()" x-init="init()" class="flex h-screen">
+        
+        <!-- Sidebar -->
+        <div class="w-80 bg-white shadow-lg flex flex-col">
+            <!-- Sidebar Header -->
+            <div class="p-6 border-b bg-gradient-to-r from-indigo-600 to-purple-600">
+                <h1 class="text-2xl font-bold text-white">RAGTrace Dashboard</h1>
+                <p class="text-indigo-100 text-sm mt-1">평가 보고서 관리 시스템</p>
+            </div>
+            
+            <!-- Filter Section -->
+            <div class="p-4 border-b bg-gray-50">
+                <input type="text" 
+                    x-model="searchQuery"
+                    @input="filterReports"
+                    placeholder="보고서 검색..." 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                
+                <div class="mt-3 flex gap-2">
+                    <button @click="setFilter('all')" 
+                        :class="filterType === 'all' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700'"
+                        class="flex-1 px-3 py-1 text-sm rounded-lg border transition-colors">
+                        전체
+                    </button>
+                    <button @click="setFilter('success')" 
+                        :class="filterType === 'success' ? 'bg-green-600 text-white' : 'bg-white text-gray-700'"
+                        class="flex-1 px-3 py-1 text-sm rounded-lg border transition-colors">
+                        우수
+                    </button>
+                    <button @click="setFilter('warning')" 
+                        :class="filterType === 'warning' ? 'bg-yellow-600 text-white' : 'bg-white text-gray-700'"
+                        class="flex-1 px-3 py-1 text-sm rounded-lg border transition-colors">
+                        양호
+                    </button>
+                    <button @click="setFilter('danger')" 
+                        :class="filterType === 'danger' ? 'bg-red-600 text-white' : 'bg-white text-gray-700'"
+                        class="flex-1 px-3 py-1 text-sm rounded-lg border transition-colors">
+                        개선
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Reports List -->
+            <div class="flex-1 overflow-y-auto sidebar-scrollbar p-4">
+                <div class="space-y-2">
+                    <template x-for="report in filteredReports" :key="report.run_id">
+                        <div @click="selectReport(report)"
+                            :class="selectedReport && selectedReport.run_id === report.run_id ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-200 hover:bg-gray-50'"
+                            class="p-3 border rounded-lg cursor-pointer transition-all">
+                            
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-sm text-gray-900" x-text="report.dataset_name"></h3>
+                                    <p class="text-xs text-gray-500 mt-1" x-text="report.timestamp_display"></p>
+                                </div>
+                                <span :class="{
+                                    'bg-green-100 text-green-800': report.status_badge === 'success',
+                                    'bg-yellow-100 text-yellow-800': report.status_badge === 'warning',
+                                    'bg-red-100 text-red-800': report.status_badge === 'danger'
+                                }" class="px-2 py-1 text-xs font-medium rounded-full">
+                                    <span x-text="report.status_text"></span>
+                                </span>
+                            </div>
+                            
+                            <div class="mt-2 flex items-center justify-between">
+                                <span class="text-xs text-gray-600">
+                                    점수: <span class="font-bold" x-text="(report.ragas_score || 0).toFixed(3)"></span>
+                                </span>
+                                <span class="text-xs text-gray-500">
+                                    <span x-text="report.dataset_items"></span>개 샘플
+                                </span>
+                            </div>
+                            
+                            <!-- Selection checkbox for comparison -->
+                            <div class="mt-2" @click.stop>
+                                <label class="flex items-center text-xs">
+                                    <input type="checkbox" 
+                                        :checked="selectedForComparison.includes(report.run_id)"
+                                        @change="toggleComparison(report.run_id)"
+                                        class="mr-2 rounded text-indigo-600">
+                                    비교 선택
+                                </label>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                
+                <div x-show="filteredReports.length === 0" class="text-center py-8 text-gray-500">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p>보고서가 없습니다</p>
+                </div>
+            </div>
+            
+            <!-- Comparison Button -->
+            <div class="p-4 border-t bg-gray-50" x-show="selectedForComparison.length >= 2">
+                <button @click="compareSelected" 
+                    class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                    <span x-text="selectedForComparison.length"></span>개 보고서 비교
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Bar -->
+            <div class="bg-white shadow-sm border-b px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-800">
+                        <span x-show="!selectedReport">보고서를 선택하세요</span>
+                        <span x-show="selectedReport" x-text="selectedReport?.dataset_name"></span>
+                    </h2>
+                    
+                    <div class="flex gap-2" x-show="selectedReport">
+                        <button @click="exportReport" 
+                            class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm">
+                            📥 내보내기
+                        </button>
+                        <button @click="refreshData" 
+                            class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm">
+                            🔄 새로고침
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Content Area -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <!-- Welcome State -->
+                <div x-show="!selectedReport && !comparisonMode" class="flex items-center justify-center h-full">
+                    <div class="text-center">
+                        <svg class="w-24 h-24 mx-auto mb-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-2">RAGTrace 평가 대시보드</h3>
+                        <p class="text-gray-500">왼쪽 사이드바에서 보고서를 선택하거나</p>
+                        <p class="text-gray-500">여러 보고서를 선택하여 비교할 수 있습니다</p>
+                    </div>
+                </div>
+                
+                <!-- Report Details View -->
+                <div x-show="selectedReport && !comparisonMode" x-cloak>
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">종합 점수</p>
+                                    <p class="text-3xl font-bold text-indigo-600 mt-1" x-text="(selectedReport?.ragas_score || 0).toFixed(3)"></p>
+                                </div>
+                                <div class="p-3 bg-indigo-100 rounded-lg">
+                                    <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">평가 샘플</p>
+                                    <p class="text-3xl font-bold text-gray-800 mt-1" x-text="selectedReport?.dataset_items || 0"></p>
+                                </div>
+                                <div class="p-3 bg-gray-100 rounded-lg">
+                                    <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">평가 상태</p>
+                                    <p class="text-2xl font-bold mt-1"
+                                        :class="{
+                                            'text-green-600': selectedReport?.status_badge === 'success',
+                                            'text-yellow-600': selectedReport?.status_badge === 'warning',
+                                            'text-red-600': selectedReport?.status_badge === 'danger'
+                                        }"
+                                        x-text="selectedReport?.status_text"></p>
+                                </div>
+                                <div class="p-3 rounded-lg"
+                                    :class="{
+                                        'bg-green-100': selectedReport?.status_badge === 'success',
+                                        'bg-yellow-100': selectedReport?.status_badge === 'warning',
+                                        'bg-red-100': selectedReport?.status_badge === 'danger'
+                                    }">
+                                    <svg class="w-8 h-8"
+                                        :class="{
+                                            'text-green-600': selectedReport?.status_badge === 'success',
+                                            'text-yellow-600': selectedReport?.status_badge === 'warning',
+                                            'text-red-600': selectedReport?.status_badge === 'danger'
+                                        }"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Metrics Chart -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">메트릭 상세</h3>
+                        <div class="h-80">
+                            <canvas id="metricsChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Metrics Table -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">메트릭별 점수</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b">
+                                        <th class="text-left py-3 px-4 font-semibold text-gray-700">메트릭</th>
+                                        <th class="text-center py-3 px-4 font-semibold text-gray-700">점수</th>
+                                        <th class="text-center py-3 px-4 font-semibold text-gray-700">상태</th>
+                                        <th class="text-left py-3 px-4 font-semibold text-gray-700">시각화</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="metric in getMetrics()" :key="metric.name">
+                                        <tr class="border-b hover:bg-gray-50">
+                                            <td class="py-3 px-4">
+                                                <span class="font-medium" x-text="metric.label"></span>
+                                            </td>
+                                            <td class="text-center py-3 px-4">
+                                                <span class="font-bold text-lg" x-text="metric.value.toFixed(3)"></span>
+                                            </td>
+                                            <td class="text-center py-3 px-4">
+                                                <span :class="{
+                                                    'bg-green-100 text-green-800': metric.value >= 0.8,
+                                                    'bg-yellow-100 text-yellow-800': metric.value >= 0.6 && metric.value < 0.8,
+                                                    'bg-red-100 text-red-800': metric.value < 0.6
+                                                }" class="px-3 py-1 rounded-full text-sm font-medium">
+                                                    <span x-text="metric.value >= 0.8 ? '우수' : (metric.value >= 0.6 ? '양호' : '개선필요')"></span>
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4">
+                                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                                    <div class="h-2 rounded-full transition-all duration-500"
+                                                        :class="{
+                                                            'bg-green-500': metric.value >= 0.8,
+                                                            'bg-yellow-500': metric.value >= 0.6 && metric.value < 0.8,
+                                                            'bg-red-500': metric.value < 0.6
+                                                        }"
+                                                        :style="`width: ${metric.value * 100}%`"></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics -->
+                    <div class="bg-white rounded-xl shadow-sm p-6" x-show="selectedReport?.statistics">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">통계 분석</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="text-center">
+                                <p class="text-sm text-gray-600">평균</p>
+                                <p class="text-xl font-bold" x-text="(selectedReport?.statistics?.mean || 0).toFixed(4)"></p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-sm text-gray-600">표준편차</p>
+                                <p class="text-xl font-bold" x-text="(selectedReport?.statistics?.std || 0).toFixed(4)"></p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-sm text-gray-600">최소값</p>
+                                <p class="text-xl font-bold" x-text="(selectedReport?.statistics?.min || 0).toFixed(4)"></p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-sm text-gray-600">최대값</p>
+                                <p class="text-xl font-bold" x-text="(selectedReport?.statistics?.max || 0).toFixed(4)"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Comparison View -->
+                <div x-show="comparisonMode" x-cloak>
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-semibold text-gray-800">보고서 비교 분석</h3>
+                            <button @click="exitComparison" 
+                                class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                                ✕ 비교 종료
+                            </button>
+                        </div>
+                        
+                        <!-- Comparison Chart -->
+                        <div class="h-96 mb-6">
+                            <canvas id="comparisonChart"></canvas>
+                        </div>
+                        
+                        <!-- Comparison Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b">
+                                        <th class="text-left py-3 px-4 font-semibold text-gray-700">메트릭</th>
+                                        <template x-for="report in comparisonData?.reports || []" :key="report.run_id">
+                                            <th class="text-center py-3 px-4 font-semibold text-gray-700">
+                                                <div>
+                                                    <p x-text="report.dataset_name" class="text-sm"></p>
+                                                    <p class="text-xs text-gray-500" x-text="report.timestamp.split('T')[0]"></p>
+                                                </div>
+                                            </th>
+                                        </template>
+                                        <th class="text-center py-3 px-4 font-semibold text-gray-700">변화율</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="[metric, data] in Object.entries(comparisonData?.metrics || {})" :key="metric">
+                                        <tr class="border-b hover:bg-gray-50">
+                                            <td class="py-3 px-4 font-medium" x-text="getMetricLabel(metric)"></td>
+                                            <template x-for="(value, index) in data.values" :key="index">
+                                                <td class="text-center py-3 px-4">
+                                                    <span class="font-bold" x-text="value.toFixed(3)"></span>
+                                                </td>
+                                            </template>
+                                            <td class="text-center py-3 px-4">
+                                                <span :class="data.improvement > 0 ? 'text-green-600' : 'text-red-600'" 
+                                                    class="font-bold">
+                                                    <span x-text="data.improvement > 0 ? '↑' : '↓'"></span>
+                                                    <span x-text="Math.abs(data.improvement_pct).toFixed(1)"></span>%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Statistical Test Result -->
+                        <div x-show="comparisonData?.statistical_test" class="mt-6 p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">통계 검정 결과</h4>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                    <p class="text-sm text-gray-600">검정 방법</p>
+                                    <p class="font-bold" x-text="comparisonData?.statistical_test?.type"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">p-value</p>
+                                    <p class="font-bold" x-text="comparisonData?.statistical_test?.p_value?.toFixed(4)"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">통계량</p>
+                                    <p class="font-bold" x-text="comparisonData?.statistical_test?.t_statistic?.toFixed(4)"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">결과</p>
+                                    <p class="font-bold" 
+                                        :class="comparisonData?.statistical_test?.significant ? 'text-green-600' : 'text-gray-600'"
+                                        x-text="comparisonData?.statistical_test?.interpretation"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function dashboardApp() {
+            return {
+                reports: [],
+                filteredReports: [],
+                selectedReport: null,
+                selectedForComparison: [],
+                comparisonMode: false,
+                comparisonData: null,
+                searchQuery: '',
+                filterType: 'all',
+                metricsChart: null,
+                comparisonChart: null,
+                
+                async init() {
+                    await this.loadReports();
+                },
+                
+                async loadReports() {
+                    try {
+                        const response = await fetch('/api/reports');
+                        this.reports = await response.json();
+                        this.filterReports();
+                    } catch (error) {
+                        console.error('Failed to load reports:', error);
+                    }
+                },
+                
+                filterReports() {
+                    let filtered = [...this.reports];
+                    
+                    // Search filter
+                    if (this.searchQuery) {
+                        filtered = filtered.filter(r => 
+                            r.dataset_name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                            r.run_id.toLowerCase().includes(this.searchQuery.toLowerCase())
+                        );
+                    }
+                    
+                    // Status filter
+                    if (this.filterType !== 'all') {
+                        filtered = filtered.filter(r => r.status_badge === this.filterType);
+                    }
+                    
+                    this.filteredReports = filtered;
+                },
+                
+                setFilter(type) {
+                    this.filterType = type;
+                    this.filterReports();
+                },
+                
+                async selectReport(report) {
+                    this.selectedReport = report;
+                    this.comparisonMode = false;
+                    
+                    // Load detailed data
+                    try {
+                        const response = await fetch(`/api/report/${report.run_id}`);
+                        const detailedData = await response.json();
+                        this.selectedReport = { ...this.selectedReport, ...detailedData };
+                        
+                        // Update chart
+                        this.$nextTick(() => {
+                            this.updateMetricsChart();
+                        });
+                    } catch (error) {
+                        console.error('Failed to load report details:', error);
+                    }
+                },
+                
+                toggleComparison(runId) {
+                    const index = this.selectedForComparison.indexOf(runId);
+                    if (index > -1) {
+                        this.selectedForComparison.splice(index, 1);
+                    } else {
+                        if (this.selectedForComparison.length < 4) {
+                            this.selectedForComparison.push(runId);
+                        }
+                    }
+                },
+                
+                async compareSelected() {
+                    if (this.selectedForComparison.length < 2) return;
+                    
+                    try {
+                        const response = await fetch('/api/compare', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ run_ids: this.selectedForComparison })
+                        });
+                        
+                        this.comparisonData = await response.json();
+                        this.comparisonMode = true;
+                        this.selectedReport = null;
+                        
+                        this.$nextTick(() => {
+                            this.updateComparisonChart();
+                        });
+                    } catch (error) {
+                        console.error('Failed to compare reports:', error);
+                    }
+                },
+                
+                exitComparison() {
+                    this.comparisonMode = false;
+                    this.comparisonData = null;
+                    this.selectedForComparison = [];
+                },
+                
+                getMetrics() {
+                    if (!this.selectedReport) return [];
+                    
+                    const metrics = [
+                        { name: 'faithfulness', label: '충실도', value: this.selectedReport.faithfulness || 0 },
+                        { name: 'answer_relevancy', label: '답변 관련성', value: this.selectedReport.answer_relevancy || 0 },
+                        { name: 'context_precision', label: '컨텍스트 정밀도', value: this.selectedReport.context_precision || 0 },
+                        { name: 'context_recall', label: '컨텍스트 재현율', value: this.selectedReport.context_recall || 0 },
+                        { name: 'answer_correctness', label: '답변 정확도', value: this.selectedReport.answer_correctness || 0 }
+                    ];
+                    
+                    return metrics;
+                },
+                
+                getMetricLabel(metric) {
+                    const labels = {
+                        'faithfulness': '충실도',
+                        'answer_relevancy': '답변 관련성',
+                        'context_precision': '컨텍스트 정밀도',
+                        'context_recall': '컨텍스트 재현율',
+                        'answer_correctness': '답변 정확도',
+                        'ragas_score': '종합 점수'
+                    };
+                    return labels[metric] || metric;
+                },
+                
+                updateMetricsChart() {
+                    const ctx = document.getElementById('metricsChart');
+                    if (!ctx) return;
+                    
+                    const metrics = this.getMetrics();
+                    
+                    if (this.metricsChart) {
+                        this.metricsChart.destroy();
+                    }
+                    
+                    this.metricsChart = new Chart(ctx, {
+                        type: 'radar',
+                        data: {
+                            labels: metrics.map(m => m.label),
+                            datasets: [{
+                                label: '점수',
+                                data: metrics.map(m => m.value),
+                                backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                                borderColor: 'rgba(99, 102, 241, 1)',
+                                borderWidth: 2,
+                                pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: 'rgba(99, 102, 241, 1)'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                r: {
+                                    beginAtZero: true,
+                                    max: 1,
+                                    ticks: { stepSize: 0.2 }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            }
+                        }
+                    });
+                },
+                
+                updateComparisonChart() {
+                    const ctx = document.getElementById('comparisonChart');
+                    if (!ctx || !this.comparisonData) return;
+                    
+                    if (this.comparisonChart) {
+                        this.comparisonChart.destroy();
+                    }
+                    
+                    const metrics = ['faithfulness', 'answer_relevancy', 'context_precision', 'context_recall', 'answer_correctness'];
+                    const datasets = this.comparisonData.reports.map((report, index) => ({
+                        label: report.dataset_name,
+                        data: metrics.map(m => report[m] || 0),
+                        backgroundColor: `rgba(${index * 60}, ${102 + index * 30}, ${241 - index * 40}, 0.2)`,
+                        borderColor: `rgba(${index * 60}, ${102 + index * 30}, ${241 - index * 40}, 1)`,
+                        borderWidth: 2
+                    }));
+                    
+                    this.comparisonChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: metrics.map(m => this.getMetricLabel(m)),
+                            datasets: datasets
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 1
+                                }
+                            }
+                        }
+                    });
+                },
+                
+                async exportReport() {
+                    if (!this.selectedReport) return;
+                    window.open(`/api/export/${this.selectedReport.run_id}`, '_blank');
+                },
+                
+                async refreshData() {
+                    await this.loadReports();
+                    if (this.selectedReport) {
+                        await this.selectReport(this.selectedReport);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
