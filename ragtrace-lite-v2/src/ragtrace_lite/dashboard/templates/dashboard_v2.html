@@ -127,6 +127,26 @@
                 
                 <!-- Overview Mode -->
                 <div x-show="viewMode === 'overview' && selectedReport" x-cloak>
+                    <!-- Date Range Selector -->
+                    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+                        <div class="flex items-center gap-4">
+                            <label class="font-medium text-sm">기간 선택:</label>
+                            <input type="date" x-model="dateRange.start" 
+                                @change="updateTimeSeriesStats"
+                                class="px-3 py-2 border rounded-lg text-sm">
+                            <span class="text-gray-500">~</span>
+                            <input type="date" x-model="dateRange.end" 
+                                @change="updateTimeSeriesStats"
+                                class="px-3 py-2 border rounded-lg text-sm">
+                            <button @click="updateTimeSeriesStats" 
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm">
+                                적용
+                            </button>
+                            <div class="ml-auto text-sm text-gray-500">
+                                <span x-text="timeSeriesStats?.dataPoints || 0"></span>개 데이터 포인트
+                            </div>
+                        </div>
+                    </div>
                     <!-- Summary Cards -->
                     <div class="grid grid-cols-4 gap-4 mb-6">
                         <div class="bg-white rounded-xl shadow-sm p-4">
@@ -163,9 +183,31 @@
                         </div>
                     </div>
                     
+                    <!-- Time Series Statistics Section -->
+                    <div class="bg-white rounded-xl shadow-sm p-6" x-show="timeSeriesStats">
+                        <h3 class="text-lg font-semibold mb-4">시계열 통계 분석</h3>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-600 mb-1">평균 추세</p>
+                                <p class="text-xl font-semibold" x-text="timeSeriesStats?.trend || 'N/A'"></p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-600 mb-1">변동성</p>
+                                <p class="text-xl font-semibold" x-text="timeSeriesStats?.volatility ? (timeSeriesStats.volatility * 100).toFixed(1) + '%' : 'N/A'"></p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-600 mb-1">예측 성능</p>
+                                <p class="text-xl font-semibold" x-text="timeSeriesStats?.forecast || 'N/A'"></p>
+                            </div>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="timeSeriesChart"></canvas>
+                        </div>
+                    </div>
+                    
                     <!-- Statistical Analysis -->
-                    <div class="bg-white rounded-xl shadow-sm p-6">
-                        <h3 class="text-lg font-semibold mb-4">통계 분석</h3>
+                    <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+                        <h3 class="text-lg font-semibold mb-4">기초 통계량</h3>
                         <div class="grid grid-cols-3 gap-4">
                             <div>
                                 <p class="text-sm text-gray-600">평균 ± 표준편차</p>
@@ -232,8 +274,7 @@
                                                 <span x-text="question.issues?.[0] || '-'"></span>
                                             </td>
                                             <td class="text-center p-3">
-                                                <button onclick="window.dispatchEvent(new CustomEvent('showQuestionDetail', {detail: this.dataset}))"
-                                                    :data-question="JSON.stringify(question)"
+                                                <button @click="showQuestionDetail(question)"
                                                     type="button"
                                                     class="text-indigo-600 hover:text-indigo-800 text-sm font-medium cursor-pointer">
                                                     상세보기
@@ -552,22 +593,17 @@
                 commonIssues: [],
                 recommendations: [],
                 charts: {},
+                dateRange: {
+                    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    end: new Date().toISOString().split('T')[0]
+                },
+                timeSeriesStats: null,
                 
                 async init() {
                     console.log('Initializing dashboard...');
                     await this.loadReports();
                     
-                    // Setup event listener for question detail
-                    window.addEventListener('showQuestionDetail', (e) => {
-                        if (e.detail && e.detail.question) {
-                            try {
-                                const question = JSON.parse(e.detail.question);
-                                this.showQuestionDetail(question);
-                            } catch (err) {
-                                console.error('Error parsing question data:', err);
-                            }
-                        }
-                    });
+                    // No need for custom event listener anymore
                     
                     // Auto-select first report if available
                     if (this.filteredReports.length > 0) {
@@ -614,6 +650,9 @@
                         const details = await response.json();
                         this.selectedReport = { ...this.selectedReport, ...details };
                         console.log('Report loaded with statistics:', this.selectedReport.statistics);
+                        
+                        // Load time series stats
+                        await this.updateTimeSeriesStats();
                         
                         this.$nextTick(() => {
                             if (this.viewMode === 'overview') {
@@ -722,7 +761,110 @@
                     console.log('Showing question detail:', question);
                     this.selectedQuestion = question;
                     this.showQuestionModal = true;
-                    console.log('Modal should be visible now:', this.showQuestionModal);
+                    
+                    // Ensure the modal gets the right data
+                    if (!question.metrics) {
+                        question.metrics = {
+                            faithfulness: question.faithfulness || 0,
+                            answer_relevancy: question.answer_relevancy || 0,
+                            context_precision: question.context_precision || 0,
+                            context_recall: question.context_recall || 0,
+                            answer_correctness: question.answer_correctness || 0
+                        };
+                    }
+                    
+                    if (!question.contexts && question.raw_contexts) {
+                        question.contexts = question.raw_contexts;
+                    }
+                    
+                    console.log('Modal data prepared:', this.selectedQuestion);
+                },
+                
+                async updateTimeSeriesStats() {
+                    if (!this.dateRange.start || !this.dateRange.end) return;
+                    
+                    try {
+                        const response = await fetch('/api/time-series', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                start_date: this.dateRange.start,
+                                end_date: this.dateRange.end,
+                                run_id: this.selectedReport?.run_id
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            this.timeSeriesStats = await response.json();
+                            console.log('Time series stats loaded:', this.timeSeriesStats);
+                            this.createTimeSeriesChart();
+                        }
+                    } catch (error) {
+                        console.error('Failed to load time series stats:', error);
+                    }
+                },
+                
+                createTimeSeriesChart() {
+                    if (!this.timeSeriesStats || !this.timeSeriesStats.dates) return;
+                    
+                    const canvas = document.getElementById('timeSeriesChart');
+                    if (!canvas) return;
+                    
+                    // Destroy existing chart
+                    if (this.charts.timeSeries) {
+                        this.charts.timeSeries.destroy();
+                    }
+                    
+                    const ctx = canvas.getContext('2d');
+                    this.charts.timeSeries = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: this.timeSeriesStats.dates,
+                            datasets: [
+                                {
+                                    label: '실제 값',
+                                    data: this.timeSeriesStats.values,
+                                    borderColor: 'rgb(59, 130, 246)',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                    tension: 0.1
+                                },
+                                {
+                                    label: '예측 값',
+                                    data: this.timeSeriesStats.forecast_values,
+                                    borderColor: 'rgb(239, 68, 68)',
+                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                    borderDash: [5, 5],
+                                    tension: 0.1
+                                },
+                                {
+                                    label: '이동 평균',
+                                    data: this.timeSeriesStats.moving_avg,
+                                    borderColor: 'rgb(34, 197, 94)',
+                                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                    tension: 0.3
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'RAGAS Score 시계열 분석'
+                                },
+                                legend: {
+                                    position: 'top'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 1
+                                }
+                            }
+                        }
+                    });
                 },
                 
                 calculateStatistics() {

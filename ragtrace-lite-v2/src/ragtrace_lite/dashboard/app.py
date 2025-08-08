@@ -24,7 +24,7 @@ app = Flask(__name__,
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Configuration
-DB_PATH = Path(__file__).parent.parent.parent.parent / "ragtrace.db"
+DB_PATH = Path(__file__).parent.parent.parent.parent / "data" / "ragtrace.db"
 RESULTS_PATH = Path(__file__).parent.parent.parent.parent / "results"
 
 class DashboardService:
@@ -348,6 +348,157 @@ class DashboardService:
             return []
     
     @staticmethod
+    def get_time_series_stats(start_date: str, end_date: str, run_id: str = None) -> Dict:
+        """Get time series statistics for a date range"""
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Get data within date range
+            query = """
+                SELECT 
+                    DATE(timestamp) as date,
+                    AVG(ragas_score) as avg_score,
+                    AVG(faithfulness) as avg_faithfulness,
+                    AVG(answer_relevancy) as avg_relevancy,
+                    AVG(context_precision) as avg_precision,
+                    AVG(context_recall) as avg_recall,
+                    AVG(answer_correctness) as avg_correctness,
+                    COUNT(*) as count,
+                    MIN(ragas_score) as min_score,
+                    MAX(ragas_score) as max_score,
+                    GROUP_CONCAT(ragas_score) as scores
+                FROM evaluations
+                WHERE timestamp >= ? AND timestamp <= ?
+            """
+            
+            params = [start_date, end_date + ' 23:59:59']
+            
+            if run_id:
+                query += " AND run_id = ?"
+                params.append(run_id)
+            
+            query += " GROUP BY DATE(timestamp) ORDER BY date"
+            
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            
+            if not rows:
+                return {
+                    'dates': [],
+                    'values': [],
+                    'dataPoints': 0,
+                    'trend': 'No data',
+                    'volatility': 0,
+                    'forecast': 'N/A'
+                }
+            
+            # Extract data
+            dates = []
+            values = []
+            all_scores = []
+            
+            for row in rows:
+                dates.append(row['date'])
+                values.append(float(row['avg_score']) if row['avg_score'] else 0)
+                if row['scores']:
+                    scores_list = [float(s) for s in row['scores'].split(',') if s]
+                    all_scores.extend(scores_list)
+            
+            # Calculate statistics
+            import numpy as np
+            from scipy import stats as scipy_stats
+            
+            values_array = np.array(values)
+            
+            # Calculate trend
+            if len(values) > 1:
+                x = np.arange(len(values))
+                slope, intercept, r_value, p_value, std_err = scipy_stats.linregress(x, values_array)
+                
+                if slope > 0.01:
+                    trend = f'↗ 상승 추세 ({slope:.3f}/일)'
+                elif slope < -0.01:
+                    trend = f'↘ 하락 추세 ({abs(slope):.3f}/일)'
+                else:
+                    trend = f'→ 안정적 ({slope:.3f}/일)'
+            else:
+                trend = '데이터 부족'
+                slope = 0
+                intercept = values[0] if values else 0
+            
+            # Calculate volatility
+            volatility = np.std(values_array) / np.mean(values_array) if np.mean(values_array) > 0 else 0
+            
+            # Simple forecast (linear regression projection)
+            forecast_values = []
+            if len(values) >= 3:
+                # Project next 7 days
+                for i in range(len(values), len(values) + 7):
+                    forecast_val = slope * i + intercept
+                    forecast_val = max(0, min(1, forecast_val))  # Clamp between 0 and 1
+                    forecast_values.append(forecast_val)
+                
+                forecast_avg = np.mean(forecast_values)
+                forecast = f'{forecast_avg:.3f} (다음 7일 평균)'
+            else:
+                forecast = '예측 불가 (데이터 부족)'
+            
+            # Calculate moving average
+            window = min(3, len(values))
+            moving_avg = []
+            for i in range(len(values)):
+                start_idx = max(0, i - window + 1)
+                moving_avg.append(np.mean(values[start_idx:i+1]))
+            
+            # Prepare forecast data for chart
+            forecast_chart_data = [None] * len(values)  # Null for historical dates
+            if forecast_values:
+                forecast_chart_data.extend(forecast_values)
+                # Extend dates for forecast
+                from datetime import datetime, timedelta
+                last_date = datetime.strptime(dates[-1], '%Y-%m-%d')
+                for i in range(1, 8):
+                    dates.append((last_date + timedelta(days=i)).strftime('%Y-%m-%d'))
+            
+            conn.close()
+            
+            return {
+                'dates': dates,
+                'values': values + [None] * len(forecast_values),  # Pad with None for forecast dates
+                'forecast_values': forecast_chart_data,
+                'moving_avg': moving_avg + [None] * len(forecast_values),
+                'dataPoints': len(values),
+                'trend': trend,
+                'volatility': float(volatility),
+                'forecast': forecast,
+                'statistics': {
+                    'mean': float(np.mean(all_scores)) if all_scores else 0,
+                    'std': float(np.std(all_scores)) if all_scores else 0,
+                    'min': float(min(all_scores)) if all_scores else 0,
+                    'max': float(max(all_scores)) if all_scores else 0,
+                    'median': float(np.median(all_scores)) if all_scores else 0,
+                    'q1': float(np.percentile(all_scores, 25)) if all_scores else 0,
+                    'q3': float(np.percentile(all_scores, 75)) if all_scores else 0
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting time series stats: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                'dates': [],
+                'values': [],
+                'dataPoints': 0,
+                'trend': 'Error',
+                'volatility': 0,
+                'forecast': 'Error',
+                'error': str(e)
+            }
+    
+    @staticmethod
     def perform_ab_test(run_id_a: str, run_id_b: str) -> Dict:
         """Perform A/B testing between two evaluations"""
         try:
@@ -500,6 +651,17 @@ def ab_test():
     
     results = DashboardService.perform_ab_test(run_id_a, run_id_b)
     return jsonify(results)
+
+@app.route('/api/time-series', methods=['POST'])
+def time_series():
+    """Get time series statistics for a date range"""
+    data = request.get_json()
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    run_id = data.get('run_id')
+    
+    result = DashboardService.get_time_series_stats(start_date, end_date, run_id)
+    return jsonify(result)
 
 @app.route('/api/export/<run_id>')
 def export_report(run_id):
