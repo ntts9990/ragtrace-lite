@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Generate Korean HTML report with detailed statistics"""
+"""Generate Korean HTML report using unified generator"""
 
 import sys
 from pathlib import Path
@@ -8,7 +8,7 @@ import random
 
 sys.path.insert(0, 'src')
 
-from ragtrace_lite.report.korean_html_generator import KoreanHTMLReportGenerator
+from ragtrace_lite.report.unified_generator import UnifiedReportGenerator, ReportFormat, ReportLanguage
 
 def create_realistic_results():
     """실제와 유사한 평가 결과 생성"""
@@ -90,7 +90,7 @@ def main():
     print("RAGTrace 한국어 보고서 생성 데모")
     print("="*70)
     
-    generator = KoreanHTMLReportGenerator()
+    generator = UnifiedReportGenerator()
     
     # 세 가지 시나리오 테스트
     scenarios = [
@@ -116,19 +116,19 @@ def main():
         
         run_id = f"kr_eval_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{scenario_name.replace(' ', '_')}"
         
-        html_content = generator.generate_evaluation_report(
-            run_id=run_id,
-            results=results,
-            environment=environment,
-            dataset_name=dataset_name
-        )
-        
-        # 파일 저장
+        # 출력 경로 설정
         output_path = Path('results') / f'{run_id}.html'
         output_path.parent.mkdir(exist_ok=True)
         
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(html_content)
+        html_content = generator.generate_report(
+            run_id=run_id,
+            results=results,
+            environment=environment,
+            format=ReportFormat.HTML,
+            language=ReportLanguage.KOREAN,
+            output_path=output_path,
+            dataset_name=dataset_name
+        )
         
         generated_reports.append((scenario_name, output_path))
         print(f"   ✅ 저장 완료: {output_path}")

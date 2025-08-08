@@ -1,68 +1,44 @@
 #!/usr/bin/env python
-"""Initialize database tables"""
+"""Initialize database tables using DatabaseManager"""
 
-import sqlite3
+import sys
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent.parent / "data" / "ragtrace.db"
+# Add src path for imports
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 def init_tables():
-    """Create all necessary database tables"""
+    """Initialize database using DatabaseManager"""
     
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # Create evaluations table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS evaluations (
-            run_id TEXT PRIMARY KEY,
-            timestamp TEXT,
-            dataset_name TEXT,
-            dataset_items INTEGER,
-            faithfulness REAL,
-            answer_relevancy REAL,
-            context_precision REAL,
-            context_recall REAL,
-            answer_correctness REAL,
-            ragas_score REAL,
-            status TEXT DEFAULT 'running'
-        )
-    """)
-    
-    # Create evaluation_items table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS evaluation_items (
-            run_id TEXT,
-            item_index INTEGER,
-            question TEXT,
-            answer TEXT,
-            contexts TEXT,
-            ground_truth TEXT,
-            faithfulness REAL,
-            answer_relevancy REAL,
-            context_precision REAL,
-            context_recall REAL,
-            answer_correctness REAL,
-            PRIMARY KEY (run_id, item_index),
-            FOREIGN KEY (run_id) REFERENCES evaluations (run_id)
-        )
-    """)
-    
-    # Create evaluation_env table  
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS evaluation_env (
-            run_id TEXT,
-            key TEXT,
-            value TEXT,
-            PRIMARY KEY (run_id, key),
-            FOREIGN KEY (run_id) REFERENCES evaluations (run_id)
-        )
-    """)
-    
-    conn.commit()
-    conn.close()
-    
-    print("✅ Database tables initialized")
+    try:
+        from ragtrace_lite.db.manager import DatabaseManager
+        from ragtrace_lite.config.config_loader import get_config
+        
+        # Use unified configuration
+        config = get_config()
+        db_config = config._get_default_config()['database']
+        db_path = db_config['path']
+        
+        print(f"Initializing database at: {db_path}")
+        
+        # Initialize DatabaseManager (this will create all tables and run migrations)
+        db_manager = DatabaseManager(str(db_path))
+        
+        print("✅ Database tables initialized successfully")
+        print(f"   - Database path: {db_manager.db_path}")
+        print(f"   - Tables created with latest schema")
+        print(f"   - Migrations applied if needed")
+        
+        return True
+        
+    except ImportError as e:
+        print(f"❌ Failed to import required modules: {e}")
+        print("Make sure you're running from the ragtrace-lite-v2 directory")
+        return False
+    except Exception as e:
+        print(f"❌ Database initialization failed: {e}")
+        return False
 
 if __name__ == "__main__":
-    init_tables()
+    success = init_tables()
+    sys.exit(0 if success else 1)

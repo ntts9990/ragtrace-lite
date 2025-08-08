@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Generate beautiful HTML report"""
+"""Generate beautiful HTML report using unified generator"""
 
 import sys
 from pathlib import Path
@@ -7,7 +7,7 @@ from datetime import datetime
 
 sys.path.insert(0, 'src')
 
-from ragtrace_lite.report.html_generator import HTMLReportGenerator
+from ragtrace_lite.report.unified_generator import UnifiedReportGenerator, ReportFormat, ReportLanguage
 
 def main():
     print("="*60)
@@ -81,23 +81,24 @@ def main():
     </div>
     """
     
-    # Generate HTML report
-    generator = HTMLReportGenerator()
+    # Generate HTML report using unified generator
+    generator = UnifiedReportGenerator()
     run_id = f"eval_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    html_content = generator.generate_evaluation_html(
-        run_id=run_id,
-        results=results,
-        environment=environment,
-        interpretation=interpretation
-    )
     
     # Save HTML file
     output_path = Path('results') / f'{run_id}_report.html'
     output_path.parent.mkdir(exist_ok=True)
     
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
+    # Generate report with unified generator
+    html_content = generator.generate_report(
+        run_id=run_id,
+        results=results,
+        environment=environment,
+        format=ReportFormat.HTML,
+        language=ReportLanguage.ENGLISH,
+        output_path=output_path,
+        dataset_name="Customer Support QA"
+    )
     
     print(f"\n✅ HTML Report generated: {output_path}")
     print(f"\n📊 Report includes:")
