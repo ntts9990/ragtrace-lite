@@ -528,7 +528,7 @@ def export_report(run_id):
     
     return jsonify({'error': 'Report not found'}), 404
 
-def run_dashboard(host='127.0.0.1', port=5001, debug=True):
+def run_dashboard(host='127.0.0.1', port=8080, debug=True):
     """Run the dashboard server"""
     logger.info(f"Starting RAGTrace Dashboard on http://{host}:{port}")
     app.run(host=host, port=port, debug=debug)

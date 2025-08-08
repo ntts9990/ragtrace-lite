@@ -29,13 +29,13 @@ if __name__ == '__main__':
     • HTML 보고서 내보내기
     
     🌐 브라우저에서 접속:
-    http://localhost:5001
+    http://localhost:8080
     
     종료: Ctrl+C
     """)
     
     try:
-        run_dashboard(host='127.0.0.1', port=5001, debug=True)
+        run_dashboard(host='127.0.0.1', port=8080, debug=True)
     except KeyboardInterrupt:
         print("\n\n✅ Dashboard stopped.")
     except Exception as e:
