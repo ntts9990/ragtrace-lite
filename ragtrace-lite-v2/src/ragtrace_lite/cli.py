@@ -17,7 +17,7 @@ if sys.platform == 'win32':
 import click
 import logging
 from datetime import datetime
-import json
+import asyncio
 
 # 패키지 컨텍스트 보장
 def ensure_package_context():
@@ -115,10 +115,12 @@ def evaluate(ctx, excel, name, output, yes):
             
             # Adaptive Evaluator 사용 (동적 배치 크기)
             evaluator = AdaptiveEvaluator()
-            results = evaluator.evaluate(dataset, environment)
+            results = asyncio.run(evaluator.evaluate(dataset, environment))
             
-            # DB 저장 (Windows 안전 경로)
-            db_path = Path("ragtrace.db").resolve()
+            # DB 저장: 설정 기반 경로 사용
+            from ragtrace_lite.config.config_loader import get_config
+            cfg = get_config()
+            db_path = Path(cfg.get("database.path", "ragtrace.db")).resolve()
             db = DatabaseManager(str(db_path))
             
             success = db.save_evaluation(

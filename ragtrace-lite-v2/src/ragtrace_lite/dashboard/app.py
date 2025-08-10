@@ -3,37 +3,46 @@ RAGTrace Dashboard - Interactive Web Interface
 """
 
 from flask import Flask, render_template, jsonify, request, send_from_directory
-from flask_cors import CORS
-import json
+from werkzeug.exceptions import HTTPException
 from pathlib import Path
 import logging
-import sys
 
 from ragtrace_lite.config.config_loader import get_config
+from ragtrace_lite.config.logging_setup import setup_logging
 from .services import DashboardService
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+# Setup centralized logging
+setup_logging(debug=False)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__,
             template_folder='templates',
             static_folder='static')
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Basic CORS support
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+    return response
 
 # --- Error Handling ---
+@app.errorhandler(HTTPException)
+def handle_http_exception(e):
+    """Handle HTTP exceptions with JSON response."""
+    return jsonify({
+        "error": e.name,
+        "message": e.description
+    }), e.code
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     """Return JSON instead of HTML for API errors."""
-    # Pass through HTTP errors
-    if isinstance(e, click.exceptions.HTTPException):
-        return e
-
-    # Now you're handling non-HTTP exceptions only
     logger.error(f"Unhandled exception: {e}", exc_info=True)
     response = {
         "error": "Internal Server Error",
-        "message": str(e)
+        "message": "An unexpected error occurred"
     }
     return jsonify(response), 500
 

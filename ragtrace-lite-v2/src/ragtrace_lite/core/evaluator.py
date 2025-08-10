@@ -33,8 +33,9 @@ class Evaluator:
             embeddings_config: Embeddings 설정
         """
         config_loader = get_config()
-        self.llm_config = llm_config or config_loader.get_llm_config()
-        self.embeddings_config = embeddings_config or config_loader.get_embeddings_config()
+        # 전체 LLM 설정을 가져와서 from_config에서 provider 선택하도록 함
+        self.llm_config = llm_config or config_loader.config.llm
+        self.embeddings_config = embeddings_config or config_loader.config.embeddings
         
         self.llm = None
         self.embeddings = None
@@ -42,13 +43,13 @@ class Evaluator:
     
     
     
-    def evaluate(
+    async def evaluate(
         self,
         dataset: Dataset,
         environment: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        RAGAS 평가 실행
+        RAGAS 평가 실행 (비동기)
         
         Args:
             dataset: 평가할 데이터셋
@@ -57,17 +58,17 @@ class Evaluator:
         Returns:
             결과 딕셔너리 (metrics, details)
         """
-        # LLM 초기화
-        self._setup_models()
-        
-        # 메트릭 선택
-        self._select_metrics(dataset, environment)
-        
-        # 평가 실행
-        logger.info(f"Running evaluation with {len(self.metrics)} metrics...")
-        
         try:
-            results = evaluate(
+            # LLM 및 임베딩 초기화
+            self._setup_models()
+            
+            # 메트릭 선택
+            self._select_metrics(dataset, environment)
+            
+            # 평가 실행
+            logger.info(f"Running evaluation with {len(self.metrics)} metrics...")
+            
+            results = await evaluate(
                 dataset=dataset,
                 metrics=self.metrics,
                 llm=self.llm,
@@ -87,12 +88,27 @@ class Evaluator:
     
     def _setup_models(self):
         """LLM 및 임베딩 인스턴스 생성"""
-        self.llm = LLMAdapter.from_config(self.llm_config)
-        logger.info(f"LLM initialized: {self.llm._llm_type}")
+        # Pydantic 객체를 딕셔너리로 변환
+        if hasattr(self.llm_config, 'model_dump'):
+            llm_config_dict = self.llm_config.model_dump()
+        elif hasattr(self.llm_config, 'dict'):
+            llm_config_dict = self.llm_config.dict()
+        else:
+            llm_config_dict = self.llm_config
         
-        # 설정 기반 임베딩 사용 (local or API)
-        self.embeddings = EmbeddingsAdapter(self.embeddings_config)
-        logger.info(f"Embeddings initialized: {self.embeddings.provider}")
+        self.llm = LLMAdapter.from_config(llm_config_dict)
+        logger.info(f"LLM initialized")
+        
+        # 설정 기반 임베딩 사용 (local or API)  
+        if hasattr(self.embeddings_config, 'model_dump'):
+            embeddings_config_dict = self.embeddings_config.model_dump()
+        elif hasattr(self.embeddings_config, 'dict'):
+            embeddings_config_dict = self.embeddings_config.dict()
+        else:
+            embeddings_config_dict = self.embeddings_config
+        
+        self.embeddings = EmbeddingsAdapter.from_config(embeddings_config_dict)
+        logger.info(f"Embeddings initialized")
     
     def _select_metrics(self, dataset: Dataset, environment: Dict):
         """단순화된 메트릭 선택: 3개 기본 + 2개 조건부"""

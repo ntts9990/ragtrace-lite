@@ -2,17 +2,17 @@
 """Upload Excel dataset and perform RAGAS evaluation with database storage"""
 
 import pandas as pd
-import json
 from datetime import datetime
 from pathlib import Path
 import sys
 import uuid
 import os
+import asyncio
 
 # Add src to path
 sys.path.insert(0, 'src')
 
-from ragtrace_lite.core.evaluator import Evaluator
+from ragtrace_lite.core.adaptive_evaluator import AdaptiveEvaluator
 from ragtrace_lite.core.excel_parser import ExcelParser
 from ragtrace_lite.config.config_loader import get_config
 
@@ -57,7 +57,7 @@ def upload_and_evaluate_excel(excel_path: str, dataset_name: str = None):
     
     # Initialize evaluator
     try:
-        evaluator = Evaluator(config)
+        evaluator = AdaptiveEvaluator()
         print("✅ RAG Evaluator initialized")
     except Exception as e:
         print(f"❌ Error initializing evaluator: {e}")
@@ -82,7 +82,7 @@ def upload_and_evaluate_excel(excel_path: str, dataset_name: str = None):
         })
         
         # Perform evaluation
-        results = evaluator.evaluate(dataset, eval_environment)
+        results = asyncio.run(evaluator.evaluate(dataset, eval_environment))
         
         print("✅ Evaluation completed successfully!")
         print(f"   Overall RAGAS Score: {results['metrics']['ragas_score']:.3f}")
@@ -124,10 +124,10 @@ def store_evaluation_results(run_id: str, dataset_name: str, results: dict, envi
     try:
         from ragtrace_lite.db.manager import DatabaseManager
         
-        # Initialize DatabaseManager 
+        # Initialize DatabaseManager from config
         config = get_config()
-        db_config = config._get_default_config()['database']
-        db_manager = DatabaseManager(str(db_config['path']))
+        db_path = config.get("database.path", "ragtrace.db")
+        db_manager = DatabaseManager(str(db_path))
         
         # Prepare metrics
         metrics = results.get('metrics', {})

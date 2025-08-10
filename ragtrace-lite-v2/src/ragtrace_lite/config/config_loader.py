@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 import re
+from pydantic import BaseModel
 
 from .config_models import AppConfig, LLMConfig, EmbeddingsConfig, EvaluationConfig, DatabaseConfig, LoggingConfig, ReportsConfig, OfflineConfig
 

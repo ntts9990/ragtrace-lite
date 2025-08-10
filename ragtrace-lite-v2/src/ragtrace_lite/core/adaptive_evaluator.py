@@ -3,7 +3,7 @@
 import logging
 from typing import Dict, Any, Optional
 from datasets import Dataset
-import time
+import asyncio
 
 from .evaluator import Evaluator
 
@@ -18,14 +18,15 @@ class AdaptiveEvaluator(Evaluator):
         self.initial_batch_size = 5
         self.min_batch_size = 1
         self.current_batch_size = self.initial_batch_size
+        self.semaphore = asyncio.Semaphore(5) # 동시성 제어 (예: 5개 동시 요청)
 
-    def evaluate(
+    async def evaluate(
         self,
         dataset: Dataset,
         environment: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Adaptive batch size를 사용한 RAGAS 평가 실행
+        Adaptive batch size를 사용한 RAGAS 평가 실행 (비동기)
         
         Args:
             dataset: 평가할 데이터셋
@@ -46,7 +47,7 @@ class AdaptiveEvaluator(Evaluator):
         
         # 작은 데이터셋은 그대로 처리
         if total_items <= self.min_batch_size:
-            return super().evaluate(dataset, environment)
+            return await super().evaluate(dataset, environment)
         
         # 배치 처리
         all_results = []
@@ -63,8 +64,9 @@ class AdaptiveEvaluator(Evaluator):
             logger.info(f"Processing batch: items {processed+1}-{batch_end} (batch size: {batch_size})")
             
             try:
-                # 배치 평가 실행
-                batch_results = super().evaluate(batch_data, environment)
+                async with self.semaphore:
+                    # 배치 평가 실행
+                    batch_results = await super().evaluate(batch_data, environment)
                 all_results.append(batch_results)
                 
                 # 성공 시 배치 크기 점진적 증가 (최대 initial_batch_size까지)
@@ -91,7 +93,7 @@ class AdaptiveEvaluator(Evaluator):
                         # 추가 대기
                         wait_time = 10.0 + (failure_rate * 20) # 실패율에 따라 대기 시간 증가
                         logger.info(f"Waiting {wait_time:.2f}s before retry with smaller batch...")
-                        time.sleep(wait_time)
+                        await asyncio.sleep(wait_time)
                         continue
                     else:
                         # 최소 배치 크기에서도 실패하면 개별 항목 건너뛰기
@@ -106,7 +108,7 @@ class AdaptiveEvaluator(Evaluator):
                 else:
                     # 다른 에러는 재시도
                     logger.warning(f"Batch evaluation failed: {e}. Retrying...")
-                    time.sleep(5.0)
+                    await asyncio.sleep(5.0)
                     continue
         
         # 결과 병합

@@ -7,7 +7,7 @@ from ragtrace_lite.config.config_loader import get_config
 def setup_logging(debug: bool = False):
     """Setup logging based on configuration."""
     config = get_config()
-    log_config = config.logging
+    log_config = config.config.logging
 
     level = logging.DEBUG if debug else getattr(logging, log_config.level.upper(), logging.INFO)
 

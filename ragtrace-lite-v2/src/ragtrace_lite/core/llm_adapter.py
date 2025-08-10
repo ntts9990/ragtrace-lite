@@ -1,15 +1,14 @@
 """LLM 어댑터 - HCX/Gemini 지원"""
 
-import os
-import time
-import json
-import re
 from typing import Optional, List, Any, Dict
+import json
 from langchain.llms.base import LLM
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 import logging
-
+import asyncio
+import os
 import random
+import requests
 
 from .rate_limiter import get_rate_limiter
 from .providers.hcx_provider import HCXProvider
@@ -32,6 +31,7 @@ class LLMAdapter(LLM):
     backoff_factor: float = 1.5
     
     _provider_instance: Any = None
+    rate_limiter: Any = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -76,17 +76,27 @@ class LLMAdapter(LLM):
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
     ) -> str:
-        """LLM API 호출 - 지수 백오프 및 지터 적용"""
+        """LLM API 호출 - 지수 백오프 및 지터 적용 (동기)"""
+        # 동기 호출은 비동기 호출을 래핑
+        return asyncio.run(self._acall(prompt, stop, run_manager))
+
+    async def _acall(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+    ) -> str:
+        """LLM API 호출 - 지수 백오프 및 지터 적용 (비동기)"""
         
         enhanced_prompt = self._enhance_prompt(prompt)
         
         for attempt in range(self.max_retries):
             try:
-                wait_time = self.rate_limiter.acquire_sync()
+                wait_time = await self.rate_limiter.acquire()
                 if wait_time > 0:
                     logger.debug(f"Rate limiter applied {wait_time:.2f}s delay")
                 
-                response = self._provider_instance.generate(enhanced_prompt, stop)
+                response = await self._provider_instance.generate_async(enhanced_prompt, stop)
                 
                 self.rate_limiter.record_request_result(success=True)
                 return self._clean_response(response)
@@ -107,7 +117,7 @@ class LLMAdapter(LLM):
                         f"Attempt {attempt + 1}/{self.max_retries} failed with error: {e}. "
                         f"Retrying in {sleep_time:.2f} seconds..."
                     )
-                    time.sleep(sleep_time)
+                    await asyncio.sleep(sleep_time)
                 else:
                     logger.error(f"All {self.max_retries} attempts failed for {self.provider}. Using fallback.")
                     return self._get_fallback_response(prompt)
@@ -372,25 +382,29 @@ Use double quotes only.'''
         """설정에서 생성"""
         provider = config.get("provider", "hcx")
         
-        # provider별 환경 변수명 매핑
-        api_key = config.get("api_key")
+        # provider별 설정 추출
+        provider_config = config.get(provider, {})
+        if not provider_config:
+            raise ValueError(f"No configuration found for provider: {provider}")
         
-        if not api_key:
-            # ConfigLoader should have provided the API key from environment
-            logger.warning(f"No API key provided for {provider} - please check configuration")
-            raise ValueError(f"API key not found for {provider}. Please set {provider.upper()}_API_KEY environment variable or configure in config.yaml")
+        # API key 처리 (환경변수 치환)
+        api_key = provider_config.get("api_key", "")
+        if api_key.startswith("${") and api_key.endswith("}"):
+            env_var = api_key[2:-1]
+            api_key = os.environ.get(env_var, "mock_key_for_testing")
         
-        # 기본 모델명 설정
-        default_models = {
-            "hcx": "HCX-005",
-            "gemini": "gemini-2.5-flash-lite"
+        # 기본값 설정
+        default_apis = {
+            "hcx": "https://clovastudio.stream.ntruss.com/testapp/v3/chat-completions/HCX-005",
+            "gemini": "https://generativelanguage.googleapis.com/v1beta/models"
         }
         
         return cls(
             provider=provider,
             api_key=api_key,
-            model_name=config.get("model_name") or default_models.get(provider, "unknown"),
-            temperature=config.get("temperature", 0.1),
-            max_tokens=config.get("max_tokens", 1000),
-            rate_limit_delay=config.get("rate_limit_delay", 2.0)
+            api_url=provider_config.get("api_url") or default_apis.get(provider, ""),
+            model_name=provider_config.get("model_name", f"{provider}-default"),
+            temperature=provider_config.get("temperature", 0.1),
+            max_tokens=provider_config.get("max_tokens", 1024),
+            rate_limit_delay=provider_config.get("rate_limit_delay", 5.0)
         )

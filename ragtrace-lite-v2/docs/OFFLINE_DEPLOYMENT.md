@@ -266,7 +266,7 @@ ragtrace-lite --help
 
 ```python
 # Create test script: test_embeddings.py
-from ragtrace_lite.core.embeddings_adapter import EmbeddingsAdapter
+from ragtrace_lite.core.embeddings_adapter_v2 import EmbeddingsAdapter
 
 # Test local embeddings
 embeddings = EmbeddingsAdapter({"provider": "local"})
@@ -387,7 +387,7 @@ logging.basicConfig(level=logging.DEBUG)
 # test_components.py
 from ragtrace_lite.config.config_loader import ConfigLoader
 from ragtrace_lite.core.llm_adapter import LLMAdapter
-from ragtrace_lite.core.embeddings_adapter import EmbeddingsAdapter
+from ragtrace_lite.core.embeddings_adapter_v2 import EmbeddingsAdapter
 
 # Test config loading
 config = ConfigLoader()

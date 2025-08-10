@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field, HttpUrl, FilePath
-from typing import Optional, Dict, List, Literal
+from typing import Optional, Dict, List, Literal, Union
 
 class LLMProviderConfig(BaseModel):
-    api_url: HttpUrl
+    api_url: Union[HttpUrl, str]
     model_name: str
     temperature: float = 0.1
     max_tokens: int = 1024
@@ -12,8 +12,23 @@ class LLMProviderConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     provider: Literal["hcx", "gemini"] = "hcx"
-    hcx: LLMProviderConfig
-    gemini: LLMProviderConfig
+    hcx: Optional[LLMProviderConfig] = None
+    gemini: Optional[LLMProviderConfig] = None
+    
+    def model_post_init(self, __context) -> None:
+        """Create default providers if not set"""
+        if self.hcx is None:
+            self.hcx = LLMProviderConfig(
+                api_url="https://clovastudio.stream.ntruss.com/testapp/v3/chat-completions/HCX-005",
+                model_name="HCX-005",
+                api_key="${CLOVA_STUDIO_API_KEY}"
+            )
+        if self.gemini is None:
+            self.gemini = LLMProviderConfig(
+                api_url="https://generativelanguage.googleapis.com/v1beta/models",
+                model_name="gemini-2.5-flash-lite",
+                api_key="${GEMINI_API_KEY}"
+            )
 
 class LocalEmbeddingsConfig(BaseModel):
     model_path: str = "./models/bge-m3"
@@ -29,16 +44,24 @@ class APIEmbeddingsConfig(BaseModel):
 
 class EmbeddingsConfig(BaseModel):
     provider: Literal["local", "api"] = "local"
-    local: LocalEmbeddingsConfig
-    api: APIEmbeddingsConfig
+    local: Optional[LocalEmbeddingsConfig] = Field(default_factory=LocalEmbeddingsConfig)
+    api: Optional[APIEmbeddingsConfig] = None
 
 class EvaluationMetricsConfig(BaseModel):
     base: List[str] = ["faithfulness", "answer_relevancy", "context_precision"]
     conditional: List[str] = ["context_recall", "answer_correctness"]
 
+class EvaluationBatchConfig(BaseModel):
+    initial: int = 5
+    fallback_sizes: List[int] = [3, 1]
+
+class EvaluationRetryConfig(BaseModel):
+    max_attempts: int = 3
+    backoff_factor: float = 2.0
+
 class EvaluationConfig(BaseModel):
-    batch_size: Dict[str, int] = Field(default_factory=lambda: {"initial": 5, "fallback_sizes": [3, 1]})
-    retry: Dict[str, float] = Field(default_factory=lambda: {"max_attempts": 3, "backoff_factor": 2.0})
+    batch_size: EvaluationBatchConfig = Field(default_factory=EvaluationBatchConfig)
+    retry: EvaluationRetryConfig = Field(default_factory=EvaluationRetryConfig)
     metrics: EvaluationMetricsConfig = Field(default_factory=EvaluationMetricsConfig)
 
 class DatabaseConfig(BaseModel):
@@ -65,10 +88,10 @@ class OfflineConfig(BaseModel):
     platforms: List[str] = ["win_amd64", "win32"]
 
 class AppConfig(BaseModel):
-    llm: LLMConfig
-    embeddings: EmbeddingsConfig
-    evaluation: EvaluationConfig
-    database: DatabaseConfig
-    logging: LoggingConfig
-    reports: ReportsConfig
-    offline: OfflineConfig
+    llm: LLMConfig = Field(default_factory=LLMConfig)
+    embeddings: EmbeddingsConfig = Field(default_factory=EmbeddingsConfig)
+    evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    reports: ReportsConfig = Field(default_factory=ReportsConfig)
+    offline: OfflineConfig = Field(default_factory=OfflineConfig)
