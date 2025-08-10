@@ -1,428 +1,358 @@
-#!/usr/bin/env python3
 """
-RAGTrace Lite CLI entry point
-
-Original work Copyright 2024 RAGTrace Contributors
-Modified work Copyright 2025 RAGTrace Lite Contributors
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-This file has been created as part of the RAGTrace Lite project.
+CLI 진입점 - Windows 호환성 보장
 """
 
 import sys
-import argparse
-import logging
+import os
 from pathlib import Path
-from typing import Optional
 
-from .main import RAGTraceLite
-from . import __version__
+# Windows 콘솔 UTF-8 설정 (최상단)
+if sys.platform == 'win32':
+    os.system('chcp 65001 > nul 2>&1')
+    # Python 3.7+ UTF-8 모드
+    if sys.version_info >= (3, 7):
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+import click
+import logging
+from datetime import datetime
+import asyncio
+
+# 패키지 컨텍스트 보장
+def ensure_package_context():
+    """Windows에서 패키지 import 보장"""
+    global __package__
+    if __package__ is None:
+        # 직접 실행된 경우
+        file_path = Path(__file__).resolve()
+        src_path = file_path.parent.parent
+        
+        if str(src_path) not in sys.path:
+            sys.path.insert(0, str(src_path))
+        
+        # 패키지명 설정
+        __package__ = "ragtrace_lite"
+
+ensure_package_context()
+
+# 이제 절대 import 사용
+from ragtrace_lite.core.excel_parser import ExcelParser
+from ragtrace_lite.core.evaluator import Evaluator
+from ragtrace_lite.core.adaptive_evaluator import AdaptiveEvaluator
+from ragtrace_lite.db.manager import DatabaseManager
+from ragtrace_lite.stats.window_compare import WindowComparator
+from ragtrace_lite.report.generator import ReportGenerator, ReportFormat
+from ragtrace_lite import __version__
+from ragtrace_lite.config.logging_setup import setup_logging
+
 logger = logging.getLogger(__name__)
 
 
-def main():
-    """Main entry point for ragtrace-lite CLI"""
-    parser = argparse.ArgumentParser(
-        description='RAGTrace Lite - Lightweight RAG Evaluation Framework'
-    )
+@click.group()
+@click.option('--debug/--no-debug', default=False)
+@click.version_option(version=__version__)
+@click.pass_context
+def cli(ctx, debug):
+    """RAGTrace Lite v2.0 - Cross-platform RAG Evaluation Tool"""
+    ctx.ensure_object(dict)
+    ctx.obj['debug'] = debug
     
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    setup_logging(debug) # 중앙 로깅 설정 호출
     
-    # Evaluate command
-    evaluate_parser = subparsers.add_parser('evaluate', help='Run RAG evaluation')
-    evaluate_parser.add_argument(
-        'data_file',
-        type=str,
-        help='Path to evaluation data file (JSON format)'
-    )
-    evaluate_parser.add_argument(
-        '--llm',
-        type=str,
-        choices=['hcx', 'gemini'],
-        default=None,
-        help='LLM to use for evaluation (default: from config)'
-    )
-    evaluate_parser.add_argument(
-        '--output',
-        type=str,
-        default=None,
-        help='Output file path for results'
-    )
-    evaluate_parser.add_argument(
-        '--config',
-        type=str,
-        default='config.yaml',
-        help='Path to configuration file'
-    )
+    if debug:
+        logger.debug(f"Python: {sys.version}")
+        logger.debug(f"Platform: {sys.platform}")
+        logger.debug(f"CWD: {os.getcwd()}")
+        logger.debug(f"Package: {__package__}")
+
+
+@cli.command()
+@click.option('--excel', '-e', required=True, 
+              type=click.Path(exists=True, path_type=Path),
+              help='Excel file with data and env_ columns')
+@click.option('--name', '-n', default='', help='Evaluation name')
+@click.option('--output', '-o', type=click.Path(path_type=Path), 
+              default='results', help='Output directory')
+@click.option('--yes', '-y', is_flag=True, help='Skip confirmation prompts')
+@click.pass_context
+def evaluate(ctx, excel, name, output, yes):
+    """Run evaluation with Excel file"""
     
-    # List datasets command
-    list_parser = subparsers.add_parser('list-datasets', help='List available datasets')
-    list_parser.add_argument(
-        '--data-dir',
-        type=str,
-        default='./data',
-        help='Directory containing datasets'
-    )
-    
-    # Version command
-    version_parser = subparsers.add_parser('version', help='Show version information')
-    
-    # Test HCX command
-    test_parser = subparsers.add_parser('test-hcx', help='Test HCX-005 & BGE-M3 setup')
-    test_parser.add_argument(
-        '--quick',
-        action='store_true',
-        help='Quick test with minimal data'
-    )
-    test_parser.add_argument(
-        '--full',
-        action='store_true',
-        help='Full pipeline test including DB and report'
-    )
-    
-    # Dashboard command
-    dashboard_parser = subparsers.add_parser('dashboard', help='Generate web dashboard')
-    dashboard_parser.add_argument(
-        '--open',
-        action='store_true',
-        help='Open dashboard in browser after generation'
-    )
-    
-    args = parser.parse_args()
-    
-    if args.command == 'evaluate':
-        run_evaluation(args)
-    elif args.command == 'list-datasets':
-        list_datasets(args)
-    elif args.command == 'version':
-        show_version()
-    elif args.command == 'test-hcx':
-        test_hcx(args)
-    elif args.command == 'dashboard':
-        run_dashboard(args)
-    else:
-        parser.print_help()
+    try:
+        # Path 객체로 변환 (Windows 호환)
+        excel_path = Path(excel).resolve()
+        
+        if not excel_path.exists():
+            raise FileNotFoundError(f"File not found: {excel_path}")
+        
+        # Windows에서 파일 열림 확인
+        if sys.platform == 'win32':
+            try:
+                with open(excel_path, 'rb'):
+                    pass
+            except PermissionError:
+                click.echo("❌ Excel file is open. Please close it first.", err=True)
+                sys.exit(1)
+        
+        # Excel 파싱
+        click.echo(f"📊 Loading: {excel_path}")
+        parser = ExcelParser(str(excel_path))
+        dataset, environment, dataset_hash, dataset_items = parser.parse()
+        
+        # 환경 정보 출력
+        click.echo(f"\n📋 Dataset: {dataset_items} items (hash: {dataset_hash[:8]}...)")
+        
+        if environment:
+            click.echo("\n⚙️  Environment Conditions:")
+            for key, value in sorted(environment.items()):
+                click.echo(f"    {key}: {value}")
+        
+        # 평가 실행 (--yes 플래그 처리)
+        if yes or click.confirm("\n▶️  Proceed with evaluation?"):
+            run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            click.echo(f"\n🚀 Starting: {run_id}")
+            
+            # Adaptive Evaluator 사용 (동적 배치 크기)
+            evaluator = AdaptiveEvaluator()
+            results = asyncio.run(evaluator.evaluate(dataset, environment))
+            
+            # DB 저장: 설정 기반 경로 사용
+            from ragtrace_lite.config.config_loader import get_config
+            cfg = get_config()
+            db_path = Path(cfg.get("database.path", "ragtrace.db")).resolve()
+            db = DatabaseManager(str(db_path))
+            
+            success = db.save_evaluation(
+                run_id=run_id,
+                dataset_name=excel_path.stem,
+                dataset_hash=dataset_hash,
+                dataset_items=dataset_items,
+                environment=environment,
+                metrics=results['metrics'],
+                details=results['details']
+            )
+            
+            if success:
+                click.echo(f"\n✅ Completed!")
+                for metric, score in results['metrics'].items():
+                    click.echo(f"    {metric}: {score:.3f}")
+                
+                # 보고서 생성
+                report_gen = ReportGenerator()
+                report_path = report_gen.generate_report(
+                    run_id=run_id,
+                    results=results,
+                    environment=environment,
+                    output_path=output / f"{run_id}_report.html",
+                    dataset_name=excel_path.stem
+                )
+                click.echo(f"\n📄 Report: {report_path}")
+            else:
+                click.echo("❌ Failed to save results", err=True)
+                
+    except Exception as e:
+        logger.error(f"Evaluation failed: {e}", exc_info=ctx.obj.get('debug'))
+        click.echo(f"❌ Error: {e}", err=True)
+        
+        if sys.platform == 'win32':
+            click.echo("\n💡 Windows Troubleshooting:", err=True)
+            click.echo("  1. Close Excel file if open", err=True)
+            click.echo("  2. Check file path (use / or \\\\)", err=True)
+            click.echo("  3. Run as Administrator if needed", err=True)
+        
         sys.exit(1)
 
 
-def run_evaluation(args):
-    """Run RAG evaluation"""
+@cli.command()
+@click.option('--a-start', required=True, help='Window A start date (YYYY-MM-DD)')
+@click.option('--a-end', required=True, help='Window A end date')
+@click.option('--b-start', required=True, help='Window B start date')
+@click.option('--b-end', required=True, help='Window B end date')
+@click.option('--metric', '-m', default='ragas_score', help='Metric to compare')
+@click.option('--where', '-w', multiple=True, help='Environment filters (key=value)')
+@click.option('--alpha', default=0.05, type=float, help='Significance level')
+@click.option('--output', '-o', type=click.Path(path_type=Path), 
+              default='results', help='Output directory')
+def compare_windows(a_start, a_end, b_start, b_end, metric, where, alpha, output):
+    """Compare two time windows statistically"""
+    
     try:
-        # Create RAGTrace Lite instance
-        app = RAGTraceLite(args.config)
+        # 환경 필터 파싱
+        env_filters = {}
+        if where:
+            for condition in where:
+                if '=' in condition:
+                    key, value = condition.split('=', 1)
+                    env_filters[key.strip()] = value.strip()
         
-        # Run evaluation
-        success = app.evaluate_dataset(
-            data_path=args.data_file,
-            output_dir=args.output,
-            llm_provider=args.llm
+        # 비교 정보 출력
+        click.echo("📊 Window Comparison:")
+        click.echo(f"  Window A: {a_start} to {a_end}")
+        click.echo(f"  Window B: {b_start} to {b_end}")
+        click.echo(f"  Metric: {metric}")
+        if env_filters:
+            click.echo(f"  Filters: {env_filters}")
+        
+        # 통계 비교 실행
+        db = DatabaseManager()
+        comparator = WindowComparator(db)
+        
+        result = comparator.compare_windows(
+            window_a=(a_start, a_end),
+            window_b=(b_start, b_end),
+            metric=metric,
+            env_filters=env_filters,
+            mode='run_mean',  # 단순화: run_mean만 지원
+            alpha=alpha
         )
         
-        app.cleanup()
+        # 경고 출력
+        if result.warnings:
+            click.echo("\n⚠️  Warnings:")
+            for warning in result.warnings:
+                click.echo(f"  - {warning}")
         
-        if not success:
-            logger.error("Evaluation failed")
-            sys.exit(1)
+        # 결과 출력
+        click.echo(f"\n📈 Results for {result.metric_name}:")
+        click.echo(f"\nWindow A ({result.window_a['runs']} runs):")
+        click.echo(f"  Mean: {result.stats_a['mean']:.4f} ± {result.stats_a['std']:.4f}")
+        click.echo(f"  95% CI: [{result.confidence_interval_a[0]:.4f}, "
+                  f"{result.confidence_interval_a[1]:.4f}]")
+        
+        click.echo(f"\nWindow B ({result.window_b['runs']} runs):")
+        click.echo(f"  Mean: {result.stats_b['mean']:.4f} ± {result.stats_b['std']:.4f}")
+        click.echo(f"  95% CI: [{result.confidence_interval_b[0]:.4f}, "
+                  f"{result.confidence_interval_b[1]:.4f}]")
+        
+        # 변화량
+        if result.improvement > 0:
+            click.echo(f"\n📊 Change: ↑ {result.improvement:.4f} "
+                      f"({result.improvement_pct:+.1f}%)")
+        elif result.improvement < 0:
+            click.echo(f"\n📊 Change: ↓ {abs(result.improvement):.4f} "
+                      f"({result.improvement_pct:.1f}%)")
         else:
-            sys.exit(0)
+            click.echo("\n📊 Change: → No change")
         
-    except Exception as e:
-        logger.error(f"Evaluation failed: {str(e)}")
-        sys.exit(1)
-
-
-def list_datasets(args):
-    """List available datasets"""
-    data_dir = Path(args.data_dir)
-    if not data_dir.exists():
-        logger.error(f"Data directory not found: {data_dir}")
-        sys.exit(1)
-    
-    json_files = list(data_dir.glob("*.json"))
-    xlsx_files = list(data_dir.glob("*.xlsx"))
-    all_files = sorted(json_files + xlsx_files)
-    
-    if not all_files:
-        logger.info("No datasets found in data directory")
-        return
-    
-    logger.info(f"Available datasets in {data_dir}:")
-    for file in all_files:
-        logger.info(f"  - {file.name}")
-
-
-def show_version():
-    """Show version information"""
-    print(f"RAGTrace Lite v{__version__}")
-    print("Licensed under Apache-2.0")
-    print("For more information: https://github.com/ntts9990/ragtrace-lite")
-
-
-def test_hcx(args):
-    """Test HCX-005 & BGE-M3 setup"""
-    import os
-    from datetime import datetime
-    from .config_loader import load_config
-    from .llm_factory import create_llm, check_llm_connection
-    from .data_processor import DataProcessor
-    from .evaluator import RagasEvaluator
-    
-    print("=" * 70)
-    print("🧪 HCX-005 & BGE-M3 테스트")
-    print("=" * 70)
-    print(f"시작 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-    
-    # 1. 환경 확인
-    print("1️⃣ 환경 설정 확인")
-    print("-" * 50)
-    
-    # API 키 확인
-    hcx_key = os.getenv('CLOVA_STUDIO_API_KEY', '').strip()
-    if hcx_key and hcx_key.startswith('nv-'):
-        print(f"✅ HCX API 키: 설정됨 ({hcx_key[:10]}...)")
-    else:
-        print("❌ HCX API 키가 설정되지 않음")
-        print("   export CLOVA_STUDIO_API_KEY='your-key' 실행 필요")
-        sys.exit(1)
-    
-    # 설정 로드
-    try:
-        config = load_config()
-        print(f"✅ 설정 파일 로드: config.yaml")
-        print(f"   - LLM: {config.llm.provider} ({config.llm.model_name})")
-        print(f"   - Embedding: {config.embedding.provider}")
-    except Exception as e:
-        print(f"❌ 설정 로드 실패: {e}")
-        sys.exit(1)
-    
-    # 2. LLM 연결 테스트
-    print("\n2️⃣ HCX-005 연결 테스트")
-    print("-" * 50)
-    
-    try:
-        llm = create_llm(config)
-        print(f"✅ LLM 인스턴스 생성: {type(llm).__name__}")
-        
-        if check_llm_connection(llm, config.llm.provider):
-            print("✅ HCX-005 API 연결 성공")
-        else:
-            print("❌ HCX-005 API 연결 실패")
-            sys.exit(1)
-    except Exception as e:
-        print(f"❌ LLM 생성 실패: {e}")
-        sys.exit(1)
-    
-    # 3. BGE-M3 임베딩 테스트
-    print("\n3️⃣ BGE-M3 임베딩 테스트")
-    print("-" * 50)
-    
-    if config.embedding.provider == 'bge_m3':
-        print("✅ BGE-M3 설정 확인")
-        model_path = Path('./models/bge-m3')
-        if model_path.exists():
-            print(f"✅ BGE-M3 모델 존재: {model_path}")
-        else:
-            print("⚠️  BGE-M3 모델이 없음 (첫 실행 시 자동 다운로드)")
-    else:
-        print(f"⚠️  다른 임베딩 사용 중: {config.embedding.provider}")
-    
-    if args.quick:
-        # 빠른 테스트
-        print("\n4️⃣ 빠른 기능 테스트")
-        print("-" * 50)
-        
-        # 간단한 데이터로 테스트
-        test_data = {
-            'question': ['테스트 질문입니다'],
-            'answer': ['테스트 답변입니다'],
-            'contexts': [['테스트 컨텍스트입니다']],
-            'ground_truths': [['테스트 정답입니다']]
-        }
-        
-        try:
-            from datasets import Dataset
-            dataset = Dataset.from_dict(test_data)
-            print("✅ 테스트 데이터셋 생성")
-            
-            # 평가자 생성
-            evaluator = RagasEvaluator(config, llm=llm)
-            print("✅ 평가자 초기화 성공")
-            
-            print("\n✅ 모든 구성 요소가 정상 작동합니다!")
-            
-        except Exception as e:
-            print(f"❌ 테스트 실패: {e}")
-            sys.exit(1)
-    
-    elif args.full:
-        # 전체 파이프라인 테스트
-        print("\n4️⃣ 전체 파이프라인 테스트 실행")
-        print("-" * 50)
-        print("📌 파이프라인: 데이터 생성 → 평가 → DB 저장 → 보고서 생성")
-        
-        # test_full_pipeline.py의 함수 재사용
-        import subprocess
-        import os
-        
-        # API 키 환경변수 설정
-        env = os.environ.copy()
-        env['CLOVA_STUDIO_API_KEY'] = os.getenv('CLOVA_STUDIO_API_KEY', '')
-        
-        # 전체 파이프라인 스크립트 실행
-        try:
-            result = subprocess.run(
-                [sys.executable, 'test_full_pipeline.py'],
-                env=env,
-                capture_output=True,
-                text=True
-            )
-            
-            if result.returncode == 0:
-                print("\n✅ 전체 파이프라인 테스트 성공!")
+        # 통계적 유의성
+        click.echo(f"\n🔬 Statistical Test: {result.test_type}")
+        if result.p_value is not None:
+            if result.significant:
+                click.echo(f"  ✅ Significant (p = {result.p_value:.4f} < {alpha})")
             else:
-                print(f"\n❌ 파이프라인 테스트 실패: {result.stderr}")
-                
-        except Exception as e:
-            print(f"\n❌ 테스트 실행 오류: {e}")
-    
-    else:
-        # 기본 테스트
-        print("\n✅ HCX-005 & BGE-M3 설정이 올바르게 되어 있습니다.")
-        print("\n사용 가능한 옵션:")
-        print("  --quick : 빠른 기능 테스트")
-        print("  --full  : 전체 파이프라인 테스트")
-    
-    print("\n" + "=" * 70)
-    print(f"완료 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-
-
-def run_dashboard(args):
-    """Generate web dashboard"""
-    try:
-        from .web_dashboard import generate_web_dashboard
+                click.echo(f"  ❌ Not significant (p = {result.p_value:.4f} ≥ {alpha})")
+            
+            if result.cohens_d:
+                click.echo(f"  Effect size: {result.effect_size} (d = {result.cohens_d:.3f})")
         
-        dashboard_path = generate_web_dashboard()
-        print(f"✅ 웹 대시보드 생성 완료: {dashboard_path}")
+        # CI 중첩
+        if result.ci_overlap:
+            click.echo("  ⚠️  Confidence intervals overlap")
         
-        if args.open:
-            import webbrowser
-            import os
-            dashboard_url = f"file://{os.path.abspath(dashboard_path)}"
-            webbrowser.open(dashboard_url)
-            print(f"🌐 브라우저에서 대시보드 열기: {dashboard_url}")
-        else:
-            import os
-            dashboard_url = f"file://{os.path.abspath(dashboard_path)}"
-            print(f"🌐 대시보드 URL: {dashboard_url}")
+        # 보고서 생성
+        report_gen = ReportGenerator()
+        report_path = report_gen.generate_comparison_report(result, output)
+        click.echo(f"\n📄 Report saved: {report_path}")
             
     except Exception as e:
-        logger.error(f"Dashboard generation failed: {e}")
+        logger.error(f"Comparison failed: {e}")
+        click.echo(f"❌ Error: {e}", err=True)
         sys.exit(1)
 
 
-def main_enhanced():
-    """Entry point for enhanced CLI (ragtrace-lite-enhanced)"""
-    from .main_enhanced import RAGTraceLiteEnhanced
-    
-    parser = argparse.ArgumentParser(
-        description='RAGTrace Lite Enhanced - Advanced RAG Evaluation'
-    )
-    
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
-    
-    # Evaluate command
-    evaluate_parser = subparsers.add_parser('evaluate', help='Run RAG evaluation')
-    evaluate_parser.add_argument(
-        'data_file',
-        type=str,
-        help='Path to evaluation data file (JSON or XLSX format)'
-    )
-    evaluate_parser.add_argument(
-        '--llm',
-        type=str,
-        choices=['hcx', 'gemini'],
-        default=None,
-        help='LLM to use for evaluation'
-    )
-    evaluate_parser.add_argument(
-        '--output',
-        type=str,
-        default=None,
-        help='Output directory for results'
-    )
-    evaluate_parser.add_argument(
-        '--config',
-        type=str,
-        default='config.yaml',
-        help='Path to configuration file'
-    )
-    
-    # List evaluations
-    list_parser = subparsers.add_parser('list', help='List recent evaluations')
-    list_parser.add_argument(
-        '--limit',
-        type=int,
-        default=10,
-        help='Number of evaluations to show'
-    )
-    
-    # Show details
-    show_parser = subparsers.add_parser('show', help='Show evaluation details')
-    show_parser.add_argument(
-        'run_id',
-        type=str,
-        help='Run ID to show details for'
-    )
-    
-    # Export logs
-    export_parser = subparsers.add_parser('export-logs', help='Export logs for Elasticsearch')
-    export_parser.add_argument(
-        'output_path',
-        type=str,
-        help='Output file path (.ndjson)'
-    )
-    
-    # Version
-    version_parser = subparsers.add_parser('version', help='Show version information')
-    
-    args = parser.parse_args()
-    
-    if args.command == 'version':
-        show_version()
-        return
-    
-    # Create enhanced app instance
-    app = RAGTraceLiteEnhanced(getattr(args, 'config', None))
+@cli.command()
+def create_template():
+    """Create Excel template with env_ columns"""
     
     try:
-        if args.command == 'evaluate':
-            success = app.evaluate_dataset(
-                args.data_file,
-                output_dir=args.output,
-                llm_override=args.llm
-            )
-            sys.exit(0 if success else 1)
-        elif args.command == 'list':
-            app.list_evaluations(args.limit)
-        elif args.command == 'show':
-            app.show_evaluation_details(args.run_id)
-        elif args.command == 'export-logs':
-            app.export_logs(args.output_path)
-        else:
-            parser.print_help()
-    finally:
-        app.cleanup()
+        output_path = f"template_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        ExcelParser.create_template(output_path)
+        
+        click.echo(f"✅ Template created: {output_path}")
+        click.echo("\n📝 Usage:")
+        click.echo("  1. Fill in your test data (question, answer, contexts, ground_truth)")
+        click.echo("  2. Set environment values in env_ columns (first row)")
+        click.echo("  3. Add custom env_ columns as needed")
+        click.echo(f"  4. Run: ragtrace evaluate --excel {output_path}")
+        
+    except Exception as e:
+        logger.error(f"Template creation failed: {e}")
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+def list_env():
+    """List all environment keys and their usage"""
+    
+    try:
+        db = DatabaseManager()
+        stats = db.get_environment_stats()
+        
+        if not stats:
+            click.echo("No environment data found.")
+            return
+        
+        click.echo("📋 Environment Keys Usage:")
+        click.echo("-" * 60)
+        
+        for key, values in stats.items():
+            click.echo(f"\n🔑 {key}")
+            for val_info in values[:5]:  # Top 5 values
+                click.echo(f"  '{val_info['value']}': {val_info['count']} times")
+                click.echo(f"    First: {val_info['first_used'][:10]}")
+                click.echo(f"    Last: {val_info['last_used'][:10]}")
+            
+            if len(values) > 5:
+                click.echo(f"  ... and {len(values) - 5} more values")
+                
+    except Exception as e:
+        logger.error(f"Failed to list environment keys: {e}")
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@click.option('--limit', '-l', default=20, type=int, help='Number of runs to show')
+def history(limit):
+    """Show evaluation history"""
+    
+    try:
+        db = DatabaseManager()
+        runs = db.get_all_runs(limit)
+        
+        if not runs:
+            click.echo("No evaluation runs found.")
+            return
+        
+        click.echo("📚 Evaluation History:")
+        click.echo("-" * 80)
+        
+        for run in runs:
+            click.echo(f"\n🔹 {run['run_id']}")
+            click.echo(f"   Date: {run['timestamp'][:19]}")
+            click.echo(f"   Dataset: {run['dataset_name']}")
+            click.echo(f"   Items: {run['dataset_items']}")
+            click.echo(f"   Score: {run['ragas_score']:.3f}" if run['ragas_score'] else "   Score: N/A")
+            click.echo(f"   Status: {run['status']}")
+            
+    except Exception as e:
+        logger.error(f"Failed to get history: {e}")
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+def main():
+    """Entry point for console script"""
+    try:
+        cli()
+    except KeyboardInterrupt:
+        click.echo("\n\nInterrupted by user", err=True)
+        sys.exit(130)
+    except Exception as e:
+        click.echo(f"\n❌ Fatal error: {e}", err=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

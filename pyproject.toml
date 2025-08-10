@@ -4,11 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ragtrace-lite"
-version = "1.0.7"
-description = "Lightweight RAG evaluation framework with Korean language support, BGE-M3 embeddings, and HCX-005/Gemini LLMs"
+version = "2.0.0"
+description = "Lightweight RAG evaluation framework with Excel integration and cross-platform CLI"
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "Apache-2.0"}
 authors = [
     {name = "RAGTrace Lite Contributors", email = "ntts9990@gmail.com"}
 ]
@@ -32,6 +31,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "click>=8.0.0",
     "ragas>=0.1.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
@@ -79,7 +79,7 @@ all = [
 
 [project.scripts]
 ragtrace-lite = "ragtrace_lite.cli:main"
-ragtrace-lite-enhanced = "ragtrace_lite.cli:main_enhanced"
+ragtrace = "ragtrace_lite.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/ntts9990/ragtrace-lite"
@@ -94,7 +94,11 @@ include = ["ragtrace_lite*"]
 exclude = ["tests*"]
 
 [tool.setuptools.package-data]
-ragtrace_lite = ["py.typed"]
+ragtrace_lite = [
+  "py.typed",
+  "report/templates/*.html",
+  "dashboard/templates/*.html"
+]
 
 [tool.black]
 line-length = 100
