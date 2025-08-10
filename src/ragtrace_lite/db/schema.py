@@ -24,6 +24,10 @@ SCHEMAS = {
             answer_correctness REAL,
             status TEXT DEFAULT 'running',
             error_message TEXT,
+            model_name TEXT,
+            temperature REAL,
+            llm_provider TEXT,
+            embedding_model TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """,
@@ -74,6 +78,30 @@ SCHEMAS = {
         CREATE TABLE IF NOT EXISTS schema_version (
             version INTEGER PRIMARY KEY,
             applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """,
+    
+    "metric_summary": """
+        CREATE TABLE IF NOT EXISTS metric_summary (
+            run_id TEXT NOT NULL,
+            metric_name TEXT NOT NULL,
+            mean_value REAL,
+            std_value REAL,
+            min_value REAL,
+            max_value REAL,
+            median_value REAL,
+            PRIMARY KEY (run_id, metric_name),
+            FOREIGN KEY (run_id) REFERENCES evaluations (run_id) ON DELETE CASCADE
+        )
+    """,
+    
+    "item_metrics": """
+        CREATE TABLE IF NOT EXISTS item_metrics (
+            item_id INTEGER NOT NULL,
+            metric_name TEXT NOT NULL,
+            metric_value REAL,
+            PRIMARY KEY (item_id, metric_name),
+            FOREIGN KEY (item_id) REFERENCES evaluation_items (id) ON DELETE CASCADE
         )
     """
 }

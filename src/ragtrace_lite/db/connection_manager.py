@@ -48,11 +48,23 @@ class ConnectionManager:
     def _init_database(self):
         """Initialize database with schema"""
         with self.get_connection() as conn:
+            # Ensure metadata table exists first
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS metadata (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+            """)
+            
             # Check and run migrations
             current_version = self._get_schema_version(conn)
             if current_version < SCHEMA_VERSION:
                 logger.info(f"Migrating database from v{current_version} to v{SCHEMA_VERSION}")
-                migrate_database(conn, current_version, SCHEMA_VERSION)
+                # Call migrate_database with just connection
+                try:
+                    migrate_database(conn)
+                except Exception as e:
+                    logger.warning(f"Migration skipped: {e}")
             
             # Create tables
             for table_name, schema in SCHEMAS.items():
