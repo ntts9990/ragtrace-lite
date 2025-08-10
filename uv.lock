@@ -2898,9 +2898,11 @@ wheels = [
 
 [[package]]
 name = "ragtrace-lite"
-version = "1.0.6"
+version = "2.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "click", version = "8.1.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "click", version = "8.2.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "datasets" },
     { name = "jinja2" },
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -2967,6 +2969,7 @@ llm = [
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=22.0.0" },
+    { name = "click", specifier = ">=8.0.0" },
     { name = "datasets", specifier = ">=2.14.0" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "google-generativeai", marker = "extra == 'llm'", specifier = ">=0.3.0" },

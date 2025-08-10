@@ -6,7 +6,8 @@ from typing import Any, List, Optional, Dict, Union
 from langchain_core.language_models.llms import LLM
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 
-from ..providers import HCXProvider, GeminiProvider
+from ..providers.hcx_provider import HCXProvider
+from ..providers.gemini_provider import GeminiProvider
 from .prompt_enhancer import PromptEnhancer
 from .response_processor import ResponseProcessor
 
