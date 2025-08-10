@@ -1,12 +1,12 @@
-# RAGTrace Lite
+# RAGTrace Lite (v2)
 
-A lightweight RAG (Retrieval-Augmented Generation) evaluation framework with Korean language support
+경량 RAG(Retrieval-Augmented Generation) 평가 프레임워크. Excel 기반 데이터 관리, 환경 조건 추적, 통계 비교를 지원합니다.
 
 > 한국어 버전: [README_KO.md](README_KO.md)
 
-[![PyPI version](https://badge.fury.io/py/ragtrace-lite.svg)](https://badge.fury.io/py/ragtrace-lite)
+[![PyPI version](https://img.shields.io/pypi/v/ragtrace-lite.svg)](https://pypi.org/project/ragtrace-lite/)
 [![Python Support](https://img.shields.io/pypi/pyversions/ragtrace-lite.svg)](https://pypi.org/project/ragtrace-lite/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-APACHE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 ## Overview
 
@@ -14,11 +14,11 @@ RAGTrace Lite is a lightweight framework for evaluating RAG system performance.
 Built on the [RAGAS](https://github.com/explodinggradients/ragas) framework and optimized for Korean language environments.
 
 **Key Features:**
-- **Intelligent Metric Selection**: Automatically selects 5 or 4 metrics based on ground truth data availability
-- **Local BGE-M3 Embeddings**: Offline embedding support for air-gapped environments  
-- **Multi-LLM Support**: HCX-005 (Naver CLOVA Studio) and Gemini (Google)
-- **Offline Deployment**: Complete air-gapped deployment for closed networks
-- **Korean Language Optimized**: Native Korean language support
+- **Excel-first workflow**: 하나의 Excel에 데이터와 `env_` 조건을 함께 관리
+- **Environment tracking**: `env_*` 컬럼으로 무제한 환경 조건 추적
+- **Statistical compare**: 기간 윈도우 간 성능 비교 및 유의성 검정
+- **Local embeddings**: 오프라인 환경을 위한 BGE-M3 임베딩 지원
+- **Multi-LLM**: HCX-005/Gemini 등 다양한 LLM 연동
 
 ## Quick Start
 
@@ -57,13 +57,25 @@ CLOVA_STUDIO_API_KEY=nv-your-hcx-api-key
 GEMINI_API_KEY=your-gemini-api-key
 ```
 
-### Run Sample Evaluation
+### Run Sample Evaluation (Excel)
 ```bash
-# Run evaluation with BGE-M3 + HCX
-ragtrace-lite evaluate data/sample_data.json --llm hcx
+# 템플릿 생성
+ragtrace-lite create-template
 
-# Generate web dashboard
-ragtrace-lite dashboard --open
+# Excel 기반 평가 실행
+ragtrace-lite evaluate --excel data/sample_ragas_dataset.xlsx --name "demo"
+
+# 기간 비교 리포트 생성
+ragtrace-lite compare-windows \
+  --a-start 2025-01-01 --a-end 2025-01-07 \
+  --b-start 2025-01-08 --b-end 2025-01-14 \
+  --metric ragas_score
+
+# 환경 키 사용 현황
+ragtrace-lite list-env
+
+# 최근 이력 조회
+ragtrace-lite history --limit 20
 ```
 
 ## Platform Support
@@ -116,55 +128,58 @@ scripts/run_evaluation.bat
 > **Offline Deployment Guide**: [OFFLINE_DEPLOYMENT.md](OFFLINE_DEPLOYMENT.md)  
 > **Manual Installation Guide**: [MANUAL_INSTALLATION_GUIDE.md](MANUAL_INSTALLATION_GUIDE.md)
 
-## Key Features
+## Features (detailed)
 
-- **Fast Installation & Execution**: Quick start with minimal dependencies
-- **Multi-LLM Support**: HCX-005 (Naver CLOVA Studio) & Gemini (Google)
-- **Local Embeddings**: Offline embedding support via BGE-M3
-- **Intelligent Metric Selection**: Automatically selects 5 or 4 metrics based on ground truth availability
-- **Complete Offline Support**: Full air-gapped execution for closed networks
-- **Data Storage**: SQLite-based evaluation result storage and history management
-- **Enhanced Reports**: JSON, CSV, Markdown, Elasticsearch NDJSON format support
-- **Security**: Environment variable-based API key management
+- 빠른 설치 및 실행, 로컬 임베딩/다중 LLM, Excel 기반 데이터/환경 관리, 통계 리포트 생성
 
 ## License
 
-This project is provided under **Apache License 2.0**:
-
-See the [LICENSE](LICENSE) file for details.
+This project is provided under **Apache License 2.0**. See [LICENSE](LICENSE).
 
 ## Usage
 
 ### CLI Commands
 
 ```bash
-# Run evaluation
-ragtrace-lite evaluate data.json --llm hcx
+# Create Excel template
+ragtrace-lite create-template
 
-# List available datasets
-ragtrace-lite list-datasets
+# Evaluate with Excel
+ragtrace-lite evaluate --excel data.xlsx --name "exp-1"
 
-# Generate web dashboard
-ragtrace-lite dashboard --open
+# Compare windows
+ragtrace-lite compare-windows --a-start 2025-01-01 --a-end 2025-01-07 --b-start 2025-01-08 --b-end 2025-01-14 --metric ragas_score
 
-# Check version
-ragtrace-lite version
+# List env usage
+ragtrace-lite list-env
+
+# History
+ragtrace-lite history --limit 20
 ```
 
 ### Python API
 
 ```python
-from ragtrace_lite import RAGTraceLite
-from ragtrace_lite.config_loader import load_config
+from ragtrace_lite import ExcelParser
+from ragtrace_lite.core.adaptive_evaluator import AdaptiveEvaluator
+from ragtrace_lite.db.manager import DatabaseManager
 
-# Load configuration
-config = load_config()
+parser = ExcelParser("data.xlsx")
+dataset, environment, dataset_hash, dataset_items = parser.parse()
 
-# Initialize RAGTraceLite
-rag_trace = RAGTraceLite(config)
+evaluator = AdaptiveEvaluator()
+results = evaluator.evaluate_sync(dataset, environment)
 
-# Run evaluation
-results = rag_trace.evaluate("your_data.json")
+db = DatabaseManager("data/ragtrace.db")
+db.save_evaluation(
+    run_id="demo",
+    dataset_name="data",
+    dataset_hash=dataset_hash,
+    dataset_items=dataset_items,
+    environment=environment,
+    metrics=results["metrics"],
+    details=results["details"],
+)
 ```
 
 ### Environment Configuration
