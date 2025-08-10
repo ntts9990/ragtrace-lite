@@ -33,4 +33,4 @@ __all__ = [
 # 패키지 정보
 __author__ = "RAGTrace Team"
 __email__ = "ragtrace@example.com"
-__license__ = "MIT"
+__license__ = "Apache-2.0"
